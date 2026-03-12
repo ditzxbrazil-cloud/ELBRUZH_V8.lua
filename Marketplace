@@ -1,0 +1,1698 @@
+--// shhhhnayy05 Marketplace GUI - Fixed Error + Original Clothes Removal
+--// Can unequip original/starting clothes
+--// Anti-Visual System (Visible to Others)
+
+--// Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local InsertService = game:GetService("InsertService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local UserInputService = game:GetService("UserInputService")
+local CoreGui = game:GetService("CoreGui")
+
+--// Variables
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+--// shhhhnayy05 GUI Setup
+local shhhhnayy05 = {}
+shhhhnayy05.ScreenGui = Instance.new("ScreenGui")
+shhhhnayy05.ScreenGui.Name = "shhhhnayy05_Marketplace"
+shhhhnayy05.ScreenGui.ResetOnSpawn = false
+shhhhnayy05.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+--// Parent Protection
+if syn and syn.protect_gui then
+    syn.protect_gui(shhhhnayy05.ScreenGui)
+    shhhhnayy05.ScreenGui.Parent = CoreGui
+elseif gethui then
+    shhhhnayy05.ScreenGui.Parent = gethui()
+elseif KRNL_LOADED then
+    shhhhnayy05.ScreenGui.Parent = CoreGui
+else
+    shhhhnayy05.ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+end
+
+--// ============================================
+--// MAIN WINDOW (Primary) - 350x450
+--// ============================================
+shhhhnayy05.MainFrame = Instance.new("Frame")
+shhhhnayy05.MainFrame.Name = "shhhhnayy05_Main"
+shhhhnayy05.MainFrame.Size = UDim2.new(0, 350, 0, 450)
+shhhhnayy05.MainFrame.Position = UDim2.new(0.5, -175, 0.5, -225)
+shhhhnayy05.MainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+shhhhnayy05.MainFrame.BorderSizePixel = 0
+shhhhnayy05.MainFrame.ClipsDescendants = true
+shhhhnayy05.MainFrame.Parent = shhhhnayy05.ScreenGui
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = shhhhnayy05.MainFrame
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(0, 150, 255)
+MainStroke.Thickness = 2
+MainStroke.Transparency = 0.3
+MainStroke.Parent = shhhhnayy05.MainFrame
+
+--// Title Bar
+shhhhnayy05.TitleBar = Instance.new("Frame")
+shhhhnayy05.TitleBar.Name = "shhhhnayy05_TitleBar"
+shhhhnayy05.TitleBar.Size = UDim2.new(1, 0, 0, 40)
+shhhhnayy05.TitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+shhhhnayy05.TitleBar.BorderSizePixel = 0
+shhhhnayy05.TitleBar.Parent = shhhhnayy05.MainFrame
+
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = shhhhnayy05.TitleBar
+
+--// Title Text
+shhhhnayy05.TitleText = Instance.new("TextLabel")
+shhhhnayy05.TitleText.Name = "shhhhnayy05_Title"
+shhhhnayy05.TitleText.Size = UDim2.new(0.5, 0, 1, 0)
+shhhhnayy05.TitleText.Position = UDim2.new(0.02, 0, 0, 0)
+shhhhnayy05.TitleText.BackgroundTransparency = 1
+shhhhnayy05.TitleText.Text = "🔥 shhhhnayy05"
+shhhhnayy05.TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.TitleText.TextSize = 16
+shhhhnayy05.TitleText.Font = Enum.Font.GothamBold
+shhhhnayy05.TitleText.TextXAlignment = Enum.TextXAlignment.Left
+shhhhnayy05.TitleText.Parent = shhhhnayy05.TitleBar
+
+--// Open Category Button
+shhhhnayy05.OpenCategoryBtn = Instance.new("TextButton")
+shhhhnayy05.OpenCategoryBtn.Name = "shhhhnayy05_OpenCat"
+shhhhnayy05.OpenCategoryBtn.Size = UDim2.new(0, 90, 0, 26)
+shhhhnayy05.OpenCategoryBtn.Position = UDim2.new(0.52, 0, 0.5, -13)
+shhhhnayy05.OpenCategoryBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+shhhhnayy05.OpenCategoryBtn.BorderSizePixel = 0
+shhhhnayy05.OpenCategoryBtn.Text = "📂 Kategori"
+shhhhnayy05.OpenCategoryBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.OpenCategoryBtn.TextSize = 11
+shhhhnayy05.OpenCategoryBtn.Font = Enum.Font.GothamBold
+shhhhnayy05.OpenCategoryBtn.Parent = shhhhnayy05.TitleBar
+
+local OpenCatCorner = Instance.new("UICorner")
+OpenCatCorner.CornerRadius = UDim.new(0, 6)
+OpenCatCorner.Parent = shhhhnayy05.OpenCategoryBtn
+
+--// Minimize Button
+shhhhnayy05.MinimizeBtn = Instance.new("ImageButton")
+shhhhnayy05.MinimizeBtn.Name = "shhhhnayy05_Minimize"
+shhhhnayy05.MinimizeBtn.Size = UDim2.new(0, 24, 0, 24)
+shhhhnayy05.MinimizeBtn.Position = UDim2.new(0.88, -28, 0.5, -12)
+shhhhnayy05.MinimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
+shhhhnayy05.MinimizeBtn.BorderSizePixel = 0
+shhhhnayy05.MinimizeBtn.Image = "rbxassetid://3926307971"
+shhhhnayy05.MinimizeBtn.ImageRectOffset = Vector2.new(884, 284)
+shhhhnayy05.MinimizeBtn.ImageRectSize = Vector2.new(36, 36)
+shhhhnayy05.MinimizeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.MinimizeBtn.Parent = shhhhnayy05.TitleBar
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(0, 5)
+MinCorner.Parent = shhhhnayy05.MinimizeBtn
+
+--// Close Button
+shhhhnayy05.CloseBtn = Instance.new("ImageButton")
+shhhhnayy05.CloseBtn.Name = "shhhhnayy05_Close"
+shhhhnayy05.CloseBtn.Size = UDim2.new(0, 24, 0, 24)
+shhhhnayy05.CloseBtn.Position = UDim2.new(0.97, -26, 0.5, -12)
+shhhhnayy05.CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+shhhhnayy05.CloseBtn.BorderSizePixel = 0
+shhhhnayy05.CloseBtn.Image = "rbxassetid://3926305904"
+shhhhnayy05.CloseBtn.ImageRectOffset = Vector2.new(924, 724)
+shhhhnayy05.CloseBtn.ImageRectSize = Vector2.new(36, 36)
+shhhhnayy05.CloseBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseBtn.Parent = shhhhnayy05.TitleBar
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(0, 5)
+CloseCorner.Parent = shhhhnayy05.CloseBtn
+
+--// Current Category Display
+shhhhnayy05.CurrentCatDisplay = Instance.new("TextLabel")
+shhhhnayy05.CurrentCatDisplay.Size = UDim2.new(0.95, 0, 0, 25)
+shhhhnayy05.CurrentCatDisplay.Position = UDim2.new(0.025, 0, 0, 45)
+shhhhnayy05.CurrentCatDisplay.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+shhhhnayy05.CurrentCatDisplay.BorderSizePixel = 0
+shhhhnayy05.CurrentCatDisplay.Text = "📂 Kategori: All Items"
+shhhhnayy05.CurrentCatDisplay.TextColor3 = Color3.fromRGB(0, 200, 255)
+shhhhnayy05.CurrentCatDisplay.TextSize = 12
+shhhhnayy05.CurrentCatDisplay.Font = Enum.Font.GothamBold
+shhhhnayy05.CurrentCatDisplay.Parent = shhhhnayy05.MainFrame
+
+local CatDisplayCorner = Instance.new("UICorner")
+CatDisplayCorner.CornerRadius = UDim.new(0, 6)
+CatDisplayCorner.Parent = shhhhnayy05.CurrentCatDisplay
+
+--// ID Input Frame
+shhhhnayy05.InputFrame = Instance.new("Frame")
+shhhhnayy05.InputFrame.Name = "shhhhnayy05_Input"
+shhhhnayy05.InputFrame.Size = UDim2.new(0.95, 0, 0, 40)
+shhhhnayy05.InputFrame.Position = UDim2.new(0.025, 0, 0, 75)
+shhhhnayy05.InputFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+shhhhnayy05.InputFrame.BorderSizePixel = 0
+shhhhnayy05.InputFrame.Parent = shhhhnayy05.MainFrame
+
+local InputCorner = Instance.new("UICorner")
+InputCorner.CornerRadius = UDim.new(0, 8)
+InputCorner.Parent = shhhhnayy05.InputFrame
+
+--// ID Label
+shhhhnayy05.IDLabel = Instance.new("TextLabel")
+shhhhnayy05.IDLabel.Size = UDim2.new(0, 30, 0.8, 0)
+shhhhnayy05.IDLabel.Position = UDim2.new(0, 8, 0.1, 0)
+shhhhnayy05.IDLabel.BackgroundTransparency = 1
+shhhhnayy05.IDLabel.Text = "ID:"
+shhhhnayy05.IDLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+shhhhnayy05.IDLabel.TextSize = 13
+shhhhnayy05.IDLabel.Font = Enum.Font.GothamBold
+shhhhnayy05.IDLabel.Parent = shhhhnayy05.InputFrame
+
+--// ID TextBox
+shhhhnayy05.IDInput = Instance.new("TextBox")
+shhhhnayy05.IDInput.Name = "shhhhnayy05_IDInput"
+shhhhnayy05.IDInput.Size = UDim2.new(0, 130, 0.7, 0)
+shhhhnayy05.IDInput.Position = UDim2.new(0, 35, 0.15, 0)
+shhhhnayy05.IDInput.BackgroundColor3 = Color3.fromRGB(35, 35, 55)
+shhhhnayy05.IDInput.BorderSizePixel = 0
+shhhhnayy05.IDInput.Text = ""
+shhhhnayy05.IDInput.PlaceholderText = "Masukkan ID..."
+shhhhnayy05.IDInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.IDInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 100)
+shhhhnayy05.IDInput.TextSize = 12
+shhhhnayy05.IDInput.Font = Enum.Font.Gotham
+shhhhnayy05.IDInput.ClearTextOnFocus = false
+shhhhnayy05.IDInput.Parent = shhhhnayy05.InputFrame
+
+local IDCorner = Instance.new("UICorner")
+IDCorner.CornerRadius = UDim.new(0, 6)
+IDCorner.Parent = shhhhnayy05.IDInput
+
+--// View Button
+shhhhnayy05.ViewBtn = Instance.new("TextButton")
+shhhhnayy05.ViewBtn.Name = "shhhhnayy05_View"
+shhhhnayy05.ViewBtn.Size = UDim2.new(0, 60, 0.7, 0)
+shhhhnayy05.ViewBtn.Position = UDim2.new(0, 170, 0.15, 0)
+shhhhnayy05.ViewBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+shhhhnayy05.ViewBtn.BorderSizePixel = 0
+shhhhnayy05.ViewBtn.Text = "👁️ View"
+shhhhnayy05.ViewBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.ViewBtn.TextSize = 11
+shhhhnayy05.ViewBtn.Font = Enum.Font.GothamBold
+shhhhnayy05.ViewBtn.Parent = shhhhnayy05.InputFrame
+
+local ViewCorner = Instance.new("UICorner")
+ViewCorner.CornerRadius = UDim.new(0, 6)
+ViewCorner.Parent = shhhhnayy05.ViewBtn
+
+--// Preview Frame
+shhhhnayy05.PreviewFrame = Instance.new("Frame")
+shhhhnayy05.PreviewFrame.Name = "shhhhnayy05_Preview"
+shhhhnayy05.PreviewFrame.Size = UDim2.new(0.95, 0, 0, 130)
+shhhhnayy05.PreviewFrame.Position = UDim2.new(0.025, 0, 0, 120)
+shhhhnayy05.PreviewFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+shhhhnayy05.PreviewFrame.BorderSizePixel = 0
+shhhhnayy05.PreviewFrame.Parent = shhhhnayy05.MainFrame
+
+local PreviewCorner = Instance.new("UICorner")
+PreviewCorner.CornerRadius = UDim.new(0, 10)
+PreviewCorner.Parent = shhhhnayy05.PreviewFrame
+
+--// Preview Title
+shhhhnayy05.PreviewTitle = Instance.new("TextLabel")
+shhhhnayy05.PreviewTitle.Name = "shhhhnayy05_PreviewTitle"
+shhhhnayy05.PreviewTitle.Size = UDim2.new(1, 0, 0, 20)
+shhhhnayy05.PreviewTitle.BackgroundTransparency = 1
+shhhhnayy05.PreviewTitle.Text = "👁️ 3D Preview"
+shhhhnayy05.PreviewTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.PreviewTitle.TextSize = 12
+shhhhnayy05.PreviewTitle.Font = Enum.Font.GothamBold
+shhhhnayy05.PreviewTitle.Parent = shhhhnayy05.PreviewFrame
+
+--// Preview Image
+shhhhnayy05.PreviewImage = Instance.new("ImageLabel")
+shhhhnayy05.PreviewImage.Name = "shhhhnayy05_PreviewImg"
+shhhhnayy05.PreviewImage.Size = UDim2.new(0, 80, 0, 80)
+shhhhnayy05.PreviewImage.Position = UDim2.new(0.5, -40, 0.5, -20)
+shhhhnayy05.PreviewImage.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+shhhhnayy05.PreviewImage.BorderSizePixel = 0
+shhhhnayy05.PreviewImage.Image = ""
+shhhhnayy05.PreviewImage.Parent = shhhhnayy05.PreviewFrame
+
+local PrevImgCorner = Instance.new("UICorner")
+PrevImgCorner.CornerRadius = UDim.new(0, 8)
+PrevImgCorner.Parent = shhhhnayy05.PreviewImage
+
+--// Loading Spinner
+shhhhnayy05.LoadingSpinner = Instance.new("ImageLabel")
+shhhhnayy05.LoadingSpinner.Size = UDim2.new(0, 30, 0, 30)
+shhhhnayy05.LoadingSpinner.Position = UDim2.new(0.5, -15, 0.5, -15)
+shhhhnayy05.LoadingSpinner.BackgroundTransparency = 1
+shhhhnayy05.LoadingSpinner.Image = "rbxassetid://3926305904"
+shhhhnayy05.LoadingSpinner.ImageRectOffset = Vector2.new(764, 244)
+shhhhnayy05.LoadingSpinner.ImageRectSize = Vector2.new(36, 36)
+shhhhnayy05.LoadingSpinner.ImageColor3 = Color3.fromRGB(0, 150, 255)
+shhhhnayy05.LoadingSpinner.Visible = false
+shhhhnayy05.LoadingSpinner.Parent = shhhhnayy05.PreviewImage
+
+--// Item Info Frame
+shhhhnayy05.ItemInfoFrame = Instance.new("Frame")
+shhhhnayy05.ItemInfoFrame.Size = UDim2.new(0.95, 0, 0, 65)
+shhhhnayy05.ItemInfoFrame.Position = UDim2.new(0.025, 0, 0, 255)
+shhhhnayy05.ItemInfoFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+shhhhnayy05.ItemInfoFrame.BorderSizePixel = 0
+shhhhnayy05.ItemInfoFrame.Parent = shhhhnayy05.MainFrame
+
+local InfoCorner = Instance.new("UICorner")
+InfoCorner.CornerRadius = UDim.new(0, 8)
+InfoCorner.Parent = shhhhnayy05.ItemInfoFrame
+
+--// Item Name
+shhhhnayy05.ItemName = Instance.new("TextLabel")
+shhhhnayy05.ItemName.Name = "shhhhnayy05_ItemName"
+shhhhnayy05.ItemName.Size = UDim2.new(0.9, 0, 0, 18)
+shhhhnayy05.ItemName.Position = UDim2.new(0.05, 0, 0, 5)
+shhhhnayy05.ItemName.BackgroundTransparency = 1
+shhhhnayy05.ItemName.Text = "No item selected"
+shhhhnayy05.ItemName.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.ItemName.TextSize = 13
+shhhhnayy05.ItemName.Font = Enum.Font.GothamBold
+shhhhnayy05.ItemName.TextTruncate = Enum.TextTruncate.AtEnd
+shhhhnayy05.ItemName.Parent = shhhhnayy05.ItemInfoFrame
+
+--// Item Type
+shhhhnayy05.ItemType = Instance.new("TextLabel")
+shhhhnayy05.ItemType.Name = "shhhhnayy05_ItemType"
+shhhhnayy05.ItemType.Size = UDim2.new(0.9, 0, 0, 14)
+shhhhnayy05.ItemType.Position = UDim2.new(0.05, 0, 0, 23)
+shhhhnayy05.ItemType.BackgroundTransparency = 1
+shhhhnayy05.ItemType.Text = "Kategori: -"
+shhhhnayy05.ItemType.TextColor3 = Color3.fromRGB(150, 150, 150)
+shhhhnayy05.ItemType.TextSize = 10
+shhhhnayy05.ItemType.Font = Enum.Font.Gotham
+shhhhnayy05.ItemType.Parent = shhhhnayy05.ItemInfoFrame
+
+--// Item Status
+shhhhnayy05.ItemStatus = Instance.new("TextLabel")
+shhhhnayy05.ItemStatus.Name = "shhhhnayy05_ItemStatus"
+shhhhnayy05.ItemStatus.Size = UDim2.new(0.9, 0, 0, 14)
+shhhhnayy05.ItemStatus.Position = UDim2.new(0.05, 0, 0, 38)
+shhhhnayy05.ItemStatus.BackgroundTransparency = 1
+shhhhnayy05.ItemStatus.Text = "Status: Ready"
+shhhhnayy05.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 150)
+shhhhnayy05.ItemStatus.TextSize = 10
+shhhhnayy05.ItemStatus.Font = Enum.Font.GothamBold
+shhhhnayy05.ItemStatus.Parent = shhhhnayy05.ItemInfoFrame
+
+--// Anti-Visual Label
+shhhhnayy05.AntiVisualLabel = Instance.new("TextLabel")
+shhhhnayy05.AntiVisualLabel.Size = UDim2.new(0.9, 0, 0, 12)
+shhhhnayy05.AntiVisualLabel.Position = UDim2.new(0.05, 0, 0, 52)
+shhhhnayy05.AntiVisualLabel.BackgroundTransparency = 1
+shhhhnayy05.AntiVisualLabel.Text = "👁️ Anti-Visual: ON (Terlihat orang lain)"
+shhhhnayy05.AntiVisualLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
+shhhhnayy05.AntiVisualLabel.TextSize = 9
+shhhhnayy05.AntiVisualLabel.Font = Enum.Font.Gotham
+shhhhnayy05.AntiVisualLabel.Parent = shhhhnayy05.ItemInfoFrame
+
+--// Action Buttons Frame
+shhhhnayy05.ActionFrame = Instance.new("Frame")
+shhhhnayy05.ActionFrame.Size = UDim2.new(0.95, 0, 0, 45)
+shhhhnayy05.ActionFrame.Position = UDim2.new(0.025, 0, 0, 325)
+shhhhnayy05.ActionFrame.BackgroundTransparency = 1
+shhhhnayy05.ActionFrame.Parent = shhhhnayy05.MainFrame
+
+--// Equip Button
+shhhhnayy05.EquipBtn = Instance.new("TextButton")
+shhhhnayy05.EquipBtn.Name = "shhhhnayy05_Equip"
+shhhhnayy05.EquipBtn.Size = UDim2.new(0.48, 0, 0.9, 0)
+shhhhnayy05.EquipBtn.Position = UDim2.new(0, 0, 0.05, 0)
+shhhhnayy05.EquipBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+shhhhnayy05.EquipBtn.BorderSizePixel = 0
+shhhhnayy05.EquipBtn.Text = "✅ GUNAKAN"
+shhhhnayy05.EquipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.EquipBtn.TextSize = 13
+shhhhnayy05.EquipBtn.Font = Enum.Font.GothamBold
+shhhhnayy05.EquipBtn.Parent = shhhhnayy05.ActionFrame
+
+local EquipCorner = Instance.new("UICorner")
+EquipCorner.CornerRadius = UDim.new(0, 8)
+EquipCorner.Parent = shhhhnayy05.EquipBtn
+
+--// Unequip Button
+shhhhnayy05.UnequipBtn = Instance.new("TextButton")
+shhhhnayy05.UnequipBtn.Name = "shhhhnayy05_Unequip"
+shhhhnayy05.UnequipBtn.Size = UDim2.new(0.48, 0, 0.9, 0)
+shhhhnayy05.UnequipBtn.Position = UDim2.new(0.52, 0, 0.05, 0)
+shhhhnayy05.UnequipBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+shhhhnayy05.UnequipBtn.BorderSizePixel = 0
+shhhhnayy05.UnequipBtn.Text = "❌ LEPASKAN"
+shhhhnayy05.UnequipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.UnequipBtn.TextSize = 13
+shhhhnayy05.UnequipBtn.Font = Enum.Font.GothamBold
+shhhhnayy05.UnequipBtn.Parent = shhhhnayy05.ActionFrame
+
+local UnequipCorner = Instance.new("UICorner")
+UnequipCorner.CornerRadius = UDim.new(0, 8)
+UnequipCorner.Parent = shhhhnayy05.UnequipBtn
+
+--// Original Clothes Button (NEW)
+shhhhnayy05.OriginalClothesBtn = Instance.new("TextButton")
+shhhhnayy05.OriginalClothesBtn.Name = "shhhhnayy05_Original"
+shhhhnayy05.OriginalClothesBtn.Size = UDim2.new(0.95, 0, 0, 30)
+shhhhnayy05.OriginalClothesBtn.Position = UDim2.new(0.025, 0, 0, 375)
+shhhhnayy05.OriginalClothesBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
+shhhhnayy05.OriginalClothesBtn.BorderSizePixel = 0
+shhhhnayy05.OriginalClothesBtn.Text = "👕 Lihat Pakaian Awal"
+shhhhnayy05.OriginalClothesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.OriginalClothesBtn.TextSize = 12
+shhhhnayy05.OriginalClothesBtn.Font = Enum.Font.GothamBold
+shhhhnayy05.OriginalClothesBtn.Parent = shhhhnayy05.MainFrame
+
+local OriginalCorner = Instance.new("UICorner")
+OriginalCorner.CornerRadius = UDim.new(0, 8)
+OriginalCorner.Parent = shhhhnayy05.OriginalClothesBtn
+
+--// Equipped Count Frame
+shhhhnayy05.EquippedFrame = Instance.new("Frame")
+shhhhnayy05.EquippedFrame.Size = UDim2.new(0.95, 0, 0, 35)
+shhhhnayy05.EquippedFrame.Position = UDim2.new(0.025, 0, 0, 410)
+shhhhnayy05.EquippedFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+shhhhnayy05.EquippedFrame.BorderSizePixel = 0
+shhhhnayy05.EquippedFrame.Parent = shhhhnayy05.MainFrame
+
+local EquipFrameCorner = Instance.new("UICorner")
+EquipFrameCorner.CornerRadius = UDim.new(0, 6)
+EquipFrameCorner.Parent = shhhhnayy05.EquippedFrame
+
+--// Equipped Text
+shhhhnayy05.EquippedText = Instance.new("TextLabel")
+shhhhnayy05.EquippedText.Size = UDim2.new(1, 0, 0.5, 0)
+shhhhnayy05.EquippedText.Position = UDim2.new(0, 0, 0, 0)
+shhhhnayy05.EquippedText.BackgroundTransparency = 1
+shhhhnayy05.EquippedText.Text = "🎽 Sedang Dipakai: 0 items"
+shhhhnayy05.EquippedText.TextColor3 = Color3.fromRGB(100, 255, 150)
+shhhhnayy05.EquippedText.TextSize = 11
+shhhhnayy05.EquippedText.Font = Enum.Font.GothamBold
+shhhhnayy05.EquippedText.Parent = shhhhnayy05.EquippedFrame
+
+--// Original Clothes Status
+shhhhnayy05.OriginalStatus = Instance.new("TextLabel")
+shhhhnayy05.OriginalStatus.Size = UDim2.new(1, 0, 0.5, 0)
+shhhhnayy05.OriginalStatus.Position = UDim2.new(0, 0, 0.5, 0)
+shhhhnayy05.OriginalStatus.BackgroundTransparency = 1
+shhhhnayy05.OriginalStatus.Text = "👕 Pakaian Awal: 0 items"
+shhhhnayy05.OriginalStatus.TextColor3 = Color3.fromRGB(255, 200, 100)
+shhhhnayy05.OriginalStatus.TextSize = 10
+shhhhnayy05.OriginalStatus.Font = Enum.Font.Gotham
+shhhhnayy05.OriginalStatus.Parent = shhhhnayy05.EquippedFrame
+
+--// ============================================
+--// CATEGORY WINDOW (Secondary)
+--// ============================================
+shhhhnayy05.CategoryWindow = Instance.new("Frame")
+shhhhnayy05.CategoryWindow.Name = "shhhhnayy05_CatWindow"
+shhhhnayy05.CategoryWindow.Size = UDim2.new(0, 200, 0, 350)
+shhhhnayy05.CategoryWindow.Position = UDim2.new(0.5, 100, 0.5, -175)
+shhhhnayy05.CategoryWindow.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+shhhhnayy05.CategoryWindow.BorderSizePixel = 0
+shhhhnayy05.CategoryWindow.Visible = false
+shhhhnayy05.CategoryWindow.ClipsDescendants = true
+shhhhnayy05.CategoryWindow.Parent = shhhhnayy05.ScreenGui
+
+local CatWindowCorner = Instance.new("UICorner")
+CatWindowCorner.CornerRadius = UDim.new(0, 12)
+CatWindowCorner.Parent = shhhhnayy05.CategoryWindow
+
+local CatWindowStroke = Instance.new("UIStroke")
+CatWindowStroke.Color = Color3.fromRGB(255, 150, 0)
+CatWindowStroke.Thickness = 2
+CatWindowStroke.Transparency = 0.3
+CatWindowStroke.Parent = shhhhnayy05.CategoryWindow
+
+--// Category Window Title Bar
+shhhhnayy05.CatTitleBar = Instance.new("Frame")
+shhhhnayy05.CatTitleBar.Size = UDim2.new(1, 0, 0, 35)
+shhhhnayy05.CatTitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+shhhhnayy05.CatTitleBar.BorderSizePixel = 0
+shhhhnayy05.CatTitleBar.Parent = shhhhnayy05.CategoryWindow
+
+local CatTitleCorner = Instance.new("UICorner")
+CatTitleCorner.CornerRadius = UDim.new(0, 12)
+CatTitleCorner.Parent = shhhhnayy05.CatTitleBar
+
+--// Category Title Text
+shhhhnayy05.CatTitleText = Instance.new("TextLabel")
+shhhhnayy05.CatTitleText.Size = UDim2.new(0.7, 0, 1, 0)
+shhhhnayy05.CatTitleText.Position = UDim2.new(0.02, 0, 0, 0)
+shhhhnayy05.CatTitleText.BackgroundTransparency = 1
+shhhhnayy05.CatTitleText.Text = "📂 Pilih Kategori"
+shhhhnayy05.CatTitleText.TextColor3 = Color3.fromRGB(255, 200, 100)
+shhhhnayy05.CatTitleText.TextSize = 14
+shhhhnayy05.CatTitleText.Font = Enum.Font.GothamBold
+shhhhnayy05.CatTitleText.TextXAlignment = Enum.TextXAlignment.Left
+shhhhnayy05.CatTitleText.Parent = shhhhnayy05.CatTitleBar
+
+--// Close Category Button
+shhhhnayy05.CloseCatBtn = Instance.new("ImageButton")
+shhhhnayy05.CloseCatBtn.Size = UDim2.new(0, 22, 0, 22)
+shhhhnayy05.CloseCatBtn.Position = UDim2.new(0.97, -26, 0.5, -11)
+shhhhnayy05.CloseCatBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+shhhhnayy05.CloseCatBtn.BorderSizePixel = 0
+shhhhnayy05.CloseCatBtn.Image = "rbxassetid://3926305904"
+shhhhnayy05.CloseCatBtn.ImageRectOffset = Vector2.new(924, 724)
+shhhhnayy05.CloseCatBtn.ImageRectSize = Vector2.new(36, 36)
+shhhhnayy05.CloseCatBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseCatBtn.Parent = shhhhnayy05.CatTitleBar
+
+local CloseCatCorner = Instance.new("UICorner")
+CloseCatCorner.CornerRadius = UDim.new(0, 5)
+CloseCatCorner.Parent = shhhhnayy05.CloseCatBtn
+
+--// Category List Frame
+shhhhnayy05.CatListFrame = Instance.new("ScrollingFrame")
+shhhhnayy05.CatListFrame.Size = UDim2.new(0.95, 0, 0.88, -35)
+shhhhnayy05.CatListFrame.Position = UDim2.new(0.025, 0, 0, 40)
+shhhhnayy05.CatListFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+shhhhnayy05.CatListFrame.BorderSizePixel = 0
+shhhhnayy05.CatListFrame.ScrollBarThickness = 4
+shhhhnayy05.CatListFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 150, 0)
+shhhhnayy05.CatListFrame.Parent = shhhhnayy05.CategoryWindow
+
+local CatListCorner = Instance.new("UICorner")
+CatListCorner.CornerRadius = UDim.new(0, 8)
+CatListCorner.Parent = shhhhnayy05.CatListFrame
+
+--// Categories
+local categories = {
+    {name = "All Items", icon = "🔍", id = "All"},
+    {name = "Heads", icon = "👤", id = "Heads"},
+    {name = "Hair", icon = "💇", id = "Hair"},
+    {name = "Faces", icon = "😊", id = "Faces"},
+    {name = "Classic Shirts", icon = "👕", id = "ClassicShirts"},
+    {name = "Classic Pants", icon = "👖", id = "ClassicPants"},
+    {name = "T-Shirts", icon = "🎽", id = "TShirts"},
+    {name = "Layered Clothing", icon = "🧥", id = "LayeredClothing"},
+    {name = "Hats", icon = "🎩", id = "Hats"},
+    {name = "Head Accessories", icon = "👑", id = "HeadAccessories"},
+    {name = "Face Accessories", icon = "🕶️", id = "FaceAccessories"},
+    {name = "Neck", icon = "📿", id = "Neck"},
+    {name = "Shoulder", icon = "🦅", id = "Shoulder"},
+    {name = "Front", icon = "⭐", id = "Front"},
+    {name = "Back", icon = "🎒", id = "Back"},
+    {name = "Waist", icon = "🎗️", id = "Waist"},
+    {name = "Gear", icon = "⚙️", id = "Gear"},
+    {name = "Bundles", icon = "📦", id = "Bundles"},
+    {name = "Animations", icon = "🎬", id = "Animations"},
+    {name = "Emotes", icon = "🎭", id = "Emotes"}
+}
+
+--// Create Category Buttons
+shhhhnayy05.CategoryButtons = {}
+local catY = 5
+
+for _, cat in ipairs(categories) do
+    local btn = Instance.new("TextButton")
+    btn.Name = "shhhhnayy05_Cat_" .. cat.id
+    btn.Size = UDim2.new(0.95, 0, 0, 32)
+    btn.Position = UDim2.new(0.025, 0, 0, catY)
+    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+    btn.BorderSizePixel = 0
+    btn.Text = cat.icon .. " " .. cat.name
+    btn.TextColor3 = Color3.fromRGB(220, 220, 220)
+    btn.TextSize = 11
+    btn.Font = Enum.Font.GothamSemibold
+    btn.Parent = shhhhnayy05.CatListFrame
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = btn
+    
+    local selected = Instance.new("Frame")
+    selected.Name = "Selected"
+    selected.Size = UDim2.new(0, 3, 0.8, 0)
+    selected.Position = UDim2.new(0, 2, 0.1, 0)
+    selected.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+    selected.BorderSizePixel = 0
+    selected.Visible = false
+    selected.Parent = btn
+    
+    local selCorner = Instance.new("UICorner")
+    selCorner.CornerRadius = UDim.new(0, 2)
+    selCorner.Parent = selected
+    
+    btn.MouseEnter:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(45, 45, 75)}):Play()
+    end)
+    
+    btn.MouseLeave:Connect(function()
+        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 50)}):Play()
+    end)
+    
+    btn.MouseButton1Click:Connect(function()
+        for _, data in pairs(shhhhnayy05.CategoryButtons) do
+            data.Selected.Visible = false
+            data.Button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        end
+        selected.Visible = true
+        btn.BackgroundColor3 = Color3.fromRGB(50, 50, 90)
+        
+        shhhhnayy05.CurrentCategory = cat.id
+        shhhhnayy05.CurrentCatDisplay.Text = "📂 Kategori: " .. cat.name
+        
+        shhhhnayy05:CloseCategoryWindow()
+    end)
+    
+    shhhhnayy05.CategoryButtons[cat.id] = {Button = btn, Selected = selected}
+    catY = catY + 37
+end
+
+shhhhnayy05.CatListFrame.CanvasSize = UDim2.new(0, 0, 0, catY + 5)
+
+--// ============================================
+--// ORIGINAL CLOTHES WINDOW (NEW)
+--// ============================================
+shhhhnayy05.OriginalWindow = Instance.new("Frame")
+shhhhnayy05.OriginalWindow.Name = "shhhhnayy05_OriginalWindow"
+shhhhnayy05.OriginalWindow.Size = UDim2.new(0, 250, 0, 300)
+shhhhnayy05.OriginalWindow.Position = UDim2.new(0.5, -300, 0.5, -150)
+shhhhnayy05.OriginalWindow.BackgroundColor3 = Color3.fromRGB(15, 15, 25)
+shhhhnayy05.OriginalWindow.BorderSizePixel = 0
+shhhhnayy05.OriginalWindow.Visible = false
+shhhhnayy05.OriginalWindow.ClipsDescendants = true
+shhhhnayy05.OriginalWindow.Parent = shhhhnayy05.ScreenGui
+
+local OriginalWindowCorner = Instance.new("UICorner")
+OriginalWindowCorner.CornerRadius = UDim.new(0, 12)
+OriginalWindowCorner.Parent = shhhhnayy05.OriginalWindow
+
+local OriginalWindowStroke = Instance.new("UIStroke")
+OriginalWindowStroke.Color = Color3.fromRGB(255, 100, 0)
+OriginalWindowStroke.Thickness = 2
+OriginalWindowStroke.Transparency = 0.3
+OriginalWindowStroke.Parent = shhhhnayy05.OriginalWindow
+
+--// Original Window Title Bar
+shhhhnayy05.OriginalTitleBar = Instance.new("Frame")
+shhhhnayy05.OriginalTitleBar.Size = UDim2.new(1, 0, 0, 35)
+shhhhnayy05.OriginalTitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+shhhhnayy05.OriginalTitleBar.BorderSizePixel = 0
+shhhhnayy05.OriginalTitleBar.Parent = shhhhnayy05.OriginalWindow
+
+local OriginalTitleCorner = Instance.new("UICorner")
+OriginalTitleCorner.CornerRadius = UDim.new(0, 12)
+OriginalTitleCorner.Parent = shhhhnayy05.OriginalTitleBar
+
+--// Original Title Text
+shhhhnayy05.OriginalTitleText = Instance.new("TextLabel")
+shhhhnayy05.OriginalTitleText.Size = UDim2.new(0.7, 0, 1, 0)
+shhhhnayy05.OriginalTitleText.Position = UDim2.new(0.02, 0, 0, 0)
+shhhhnayy05.OriginalTitleText.BackgroundTransparency = 1
+shhhhnayy05.OriginalTitleText.Text = "👕 Pakaian Awal"
+shhhhnayy05.OriginalTitleText.TextColor3 = Color3.fromRGB(255, 150, 0)
+shhhhnayy05.OriginalTitleText.TextSize = 14
+shhhhnayy05.OriginalTitleText.Font = Enum.Font.GothamBold
+shhhhnayy05.OriginalTitleText.TextXAlignment = Enum.TextXAlignment.Left
+shhhhnayy05.OriginalTitleText.Parent = shhhhnayy05.OriginalTitleBar
+
+--// Close Original Button
+shhhhnayy05.CloseOriginalBtn = Instance.new("ImageButton")
+shhhhnayy05.CloseOriginalBtn.Size = UDim2.new(0, 22, 0, 22)
+shhhhnayy05.CloseOriginalBtn.Position = UDim2.new(0.97, -26, 0.5, -11)
+shhhhnayy05.CloseOriginalBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+shhhhnayy05.CloseOriginalBtn.BorderSizePixel = 0
+shhhhnayy05.CloseOriginalBtn.Image = "rbxassetid://3926305904"
+shhhhnayy05.CloseOriginalBtn.ImageRectOffset = Vector2.new(924, 724)
+shhhhnayy05.CloseOriginalBtn.ImageRectSize = Vector2.new(36, 36)
+shhhhnayy05.CloseOriginalBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseOriginalBtn.Parent = shhhhnayy05.OriginalTitleBar
+
+local CloseOriginalCorner = Instance.new("UICorner")
+CloseOriginalCorner.CornerRadius = UDim.new(0, 5)
+CloseOriginalCorner.Parent = shhhhnayy05.CloseOriginalBtn
+
+--// Original List Frame
+shhhhnayy05.OriginalListFrame = Instance.new("ScrollingFrame")
+shhhhnayy05.OriginalListFrame.Size = UDim2.new(0.95, 0, 0.85, -35)
+shhhhnayy05.OriginalListFrame.Position = UDim2.new(0.025, 0, 0, 40)
+shhhhnayy05.OriginalListFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
+shhhhnayy05.OriginalListFrame.BorderSizePixel = 0
+shhhhnayy05.OriginalListFrame.ScrollBarThickness = 4
+shhhhnayy05.OriginalListFrame.ScrollBarImageColor3 = Color3.fromRGB(255, 150, 0)
+shhhhnayy05.OriginalListFrame.Parent = shhhhnayy05.OriginalWindow
+
+local OriginalListCorner = Instance.new("UICorner")
+OriginalListCorner.CornerRadius = UDim.new(0, 8)
+OriginalListCorner.Parent = shhhhnayy05.OriginalListFrame
+
+--// ============================================
+--// MINIMIZED ICON
+--// ============================================
+shhhhnayy05.MinimizedIcon = Instance.new("ImageButton")
+shhhhnayy05.MinimizedIcon.Name = "shhhhnayy05_MinIcon"
+shhhhnayy05.MinimizedIcon.Size = UDim2.new(0, 50, 0, 50)
+shhhhnayy05.MinimizedIcon.Position = UDim2.new(0.95, -60, 0.95, -60)
+shhhhnayy05.MinimizedIcon.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+shhhhnayy05.MinimizedIcon.BorderSizePixel = 0
+shhhhnayy05.MinimizedIcon.Image = "rbxassetid://3926305904"
+shhhhnayy05.MinimizedIcon.ImageRectOffset = Vector2.new(644, 204)
+shhhhnayy05.MinimizedIcon.ImageRectSize = Vector2.new(36, 36)
+shhhhnayy05.MinimizedIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.MinimizedIcon.Visible = false
+shhhhnayy05.MinimizedIcon.Parent = shhhhnayy05.ScreenGui
+
+local IconCorner = Instance.new("UICorner")
+IconCorner.CornerRadius = UDim.new(1, 0)
+IconCorner.Parent = shhhhnayy05.MinimizedIcon
+
+local IconStroke = Instance.new("UIStroke")
+IconStroke.Color = Color3.fromRGB(100, 200, 255)
+IconStroke.Thickness = 3
+IconStroke.Parent = shhhhnayy05.MinimizedIcon
+
+--// Glow Effect
+shhhhnayy05.IconGlow = Instance.new("ImageLabel")
+shhhhnayy05.IconGlow.Size = UDim2.new(1.5, 0, 1.5, 0)
+shhhhnayy05.IconGlow.Position = UDim2.new(-0.25, 0, -0.25, 0)
+shhhhnayy05.IconGlow.BackgroundTransparency = 1
+shhhhnayy05.IconGlow.Image = "rbxassetid://10822646081"
+shhhhnayy05.IconGlow.ImageColor3 = Color3.fromRGB(0, 150, 255)
+shhhhnayy05.IconGlow.ImageTransparency = 0.6
+shhhhnayy05.IconGlow.Parent = shhhhnayy05.MinimizedIcon
+
+--// Rotate Animation
+spawn(function()
+    while shhhhnayy05.ScreenGui.Parent do
+        local tween = TweenService:Create(shhhhnayy05.IconGlow, TweenInfo.new(4, Enum.EasingStyle.Linear), {Rotation = shhhhnayy05.IconGlow.Rotation + 360})
+        tween:Play()
+        tween.Completed:Wait()
+    end
+end)
+
+--// Data Storage
+shhhhnayy05.CurrentCategory = "All"
+shhhhnayy05.CurrentItem = nil
+shhhhnayy05.IsItemEquipped = false
+shhhhnayy05.OriginalClothes = {
+    ClassicShirts = nil,
+    ClassicPants = nil,
+    TShirts = nil,
+    Hats = {},
+    Hair = nil,
+    Faces = nil,
+    Heads = nil,
+    HeadAccessories = {},
+    FaceAccessories = {},
+    Neck = {},
+    Shoulder = {},
+    Front = {},
+    Back = {},
+    Waist = {}
+}
+shhhhnayy05.EquippedItems = {
+    ClassicShirts = nil,
+    ClassicPants = nil,
+    TShirts = nil,
+    Hats = {},
+    Hair = nil,
+    Faces = nil,
+    Heads = nil,
+    HeadAccessories = {},
+    FaceAccessories = {},
+    Neck = {},
+    Shoulder = {},
+    Front = {},
+    Back = {},
+    Waist = {},
+    Gear = {},
+    Animations = nil,
+    Bundles = nil
+}
+
+--// Functions
+
+--// Scan Original Clothes (NEW)
+function shhhhnayy05:ScanOriginalClothes()
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    --// Get current description
+    local desc = humanoid:GetAppliedDescription()
+    if not desc then return end
+    
+    --// Clear previous
+    self.OriginalClothes = {
+        ClassicShirts = nil,
+        ClassicPants = nil,
+        TShirts = nil,
+        Hats = {},
+        Hair = nil,
+        Faces = nil,
+        Heads = nil,
+        HeadAccessories = {},
+        FaceAccessories = {},
+        Neck = {},
+        Shoulder = {},
+        Front = {},
+        Back = {},
+        Waist = {}
+    }
+    
+    --// Scan shirts
+    if desc.Shirt and desc.Shirt > 0 then
+        self.OriginalClothes.ClassicShirts = {
+            id = desc.Shirt,
+            name = "Original Shirt",
+            category = "ClassicShirts"
+        }
+    end
+    
+    --// Scan pants
+    if desc.Pants and desc.Pants > 0 then
+        self.OriginalClothes.ClassicPants = {
+            id = desc.Pants,
+            name = "Original Pants",
+            category = "ClassicPants"
+        }
+    end
+    
+    --// Scan t-shirt
+    if desc.GraphicTShirt and desc.GraphicTShirt > 0 then
+        self.OriginalClothes.TShirts = {
+            id = desc.GraphicTShirt,
+            name = "Original T-Shirt",
+            category = "TShirts"
+        }
+    end
+    
+    --// Scan hair
+    if desc.HairAccessory and desc.HairAccessory > 0 then
+        self.OriginalClothes.Hair = {
+            id = desc.HairAccessory,
+            name = "Original Hair",
+            category = "Hair"
+        }
+    end
+    
+    --// Scan face
+    if desc.Face and desc.Face > 0 then
+        self.OriginalClothes.Faces = {
+            id = desc.Face,
+            name = "Original Face",
+            category = "Faces"
+        }
+    end
+    
+    --// Scan head
+    if desc.Head and desc.Head > 0 then
+        self.OriginalClothes.Heads = {
+            id = desc.Head,
+            name = "Original Head",
+            category = "Heads"
+        }
+    end
+    
+    --// Scan accessories
+    local accessories = desc:GetAccessories(true)
+    for _, accId in ipairs(accessories) do
+        if accId > 0 then
+            table.insert(self.OriginalClothes.Hats, {
+                id = accId,
+                name = "Original Accessory",
+                category = "Hats"
+            })
+        end
+    end
+    
+    self:UpdateOriginalStatus()
+    self:PopulateOriginalList()
+end
+
+--// Update Original Status
+function shhhhnayy05:UpdateOriginalStatus()
+    local count = 0
+    if self.OriginalClothes.ClassicShirts then count = count + 1 end
+    if self.OriginalClothes.ClassicPants then count = count + 1 end
+    if self.OriginalClothes.TShirts then count = count + 1 end
+    if self.OriginalClothes.Hair then count = count + 1 end
+    if self.OriginalClothes.Faces then count = count + 1 end
+    if self.OriginalClothes.Heads then count = count + 1 end
+    count = count + #self.OriginalClothes.Hats
+    
+    self.OriginalStatus.Text = "👕 Pakaian Awal: " .. count .. " items"
+end
+
+--// Populate Original List
+function shhhhnayy05:PopulateOriginalList()
+    --// Clear list
+    for _, child in ipairs(self.OriginalListFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    local yOffset = 5
+    local items = {}
+    
+    --// Collect all original items
+    if self.OriginalClothes.ClassicShirts then
+        table.insert(items, {data = self.OriginalClothes.ClassicShirts, type = "ClassicShirts", name = "👕 Original Shirt"})
+    end
+    if self.OriginalClothes.ClassicPants then
+        table.insert(items, {data = self.OriginalClothes.ClassicPants, type = "ClassicPants", name = "👖 Original Pants"})
+    end
+    if self.OriginalClothes.TShirts then
+        table.insert(items, {data = self.OriginalClothes.TShirts, type = "TShirts", name = "🎽 Original T-Shirt"})
+    end
+    if self.OriginalClothes.Hair then
+        table.insert(items, {data = self.OriginalClothes.Hair, type = "Hair", name = "💇 Original Hair"})
+    end
+    if self.OriginalClothes.Faces then
+        table.insert(items, {data = self.OriginalClothes.Faces, type = "Faces", name = "😊 Original Face"})
+    end
+    if self.OriginalClothes.Heads then
+        table.insert(items, {data = self.OriginalClothes.Heads, type = "Heads", name = "👤 Original Head"})
+    end
+    for i, acc in ipairs(self.OriginalClothes.Hats) do
+        table.insert(items, {data = acc, type = "Hats", name = "🎩 Original Acc #" .. i})
+    end
+    
+    --// Create items
+    for _, item in ipairs(items) do
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(0.95, 0, 0, 50)
+        row.Position = UDim2.new(0.025, 0, 0, yOffset)
+        row.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        row.BorderSizePixel = 0
+        row.Parent = self.OriginalListFrame
+        
+        local rowCorner = Instance.new("UICorner")
+        rowCorner.CornerRadius = UDim.new(0, 6)
+        rowCorner.Parent = row
+        
+        --// Thumbnail
+        local thumb = Instance.new("ImageLabel")
+        thumb.Size = UDim2.new(0, 40, 0, 40)
+        thumb.Position = UDim2.new(0, 5, 0.5, -20)
+        thumb.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+        thumb.BorderSizePixel = 0
+        thumb.Image = self:GetThumbnail(item.data.id)
+        thumb.Parent = row
+        
+        local thumbCorner = Instance.new("UICorner")
+        thumbCorner.CornerRadius = UDim.new(0, 4)
+        thumbCorner.Parent = thumb
+        
+        --// Name
+        local name = Instance.new("TextLabel")
+        name.Size = UDim2.new(0, 120, 0, 20)
+        name.Position = UDim2.new(0, 50, 0, 5)
+        name.BackgroundTransparency = 1
+        name.Text = item.name
+        name.TextColor3 = Color3.fromRGB(255, 255, 255)
+        name.TextSize = 11
+        name.Font = Enum.Font.GothamBold
+        name.TextTruncate = Enum.TextTruncate.AtEnd
+        name.Parent = row
+        
+        --// ID
+        local id = Instance.new("TextLabel")
+        id.Size = UDim2.new(0, 120, 0, 15)
+        id.Position = UDim2.new(0, 50, 0, 25)
+        id.BackgroundTransparency = 1
+        id.Text = "ID: " .. tostring(item.data.id)
+        id.TextColor3 = Color3.fromRGB(150, 150, 150)
+        id.TextSize = 9
+        id.Font = Enum.Font.Gotham
+        id.Parent = row
+        
+        --// Unequip Button
+        local unequipBtn = Instance.new("TextButton")
+        unequipBtn.Size = UDim2.new(0, 50, 0, 30)
+        unequipBtn.Position = UDim2.new(1, -55, 0.5, -15)
+        unequipBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+        unequipBtn.BorderSizePixel = 0
+        unequipBtn.Text = "❌"
+        unequipBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        unequipBtn.TextSize = 14
+        unequipBtn.Font = Enum.Font.GothamBold
+        unequipBtn.Parent = row
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 4)
+        btnCorner.Parent = unequipBtn
+        
+        unequipBtn.MouseButton1Click:Connect(function()
+            self:UnequipOriginalItem(item.type, item.data.id)
+            row:Destroy()
+            self:UpdateOriginalStatus()
+        end)
+        
+        yOffset = yOffset + 55
+    end
+    
+    self.OriginalListFrame.CanvasSize = UDim2.new(0, 0, 0, yOffset + 5)
+end
+
+--// Unequip Original Item
+function shhhhnayy05:UnequipOriginalItem(category, assetId)
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    local desc = humanoid:GetAppliedDescription() or Instance.new("HumanoidDescription")
+    
+    pcall(function()
+        if category == "ClassicShirts" then
+            desc.Shirt = 0
+        elseif category == "ClassicPants" then
+            desc.Pants = 0
+        elseif category == "TShirts" then
+            desc.GraphicTShirt = 0
+        elseif category == "Hair" then
+            desc.HairAccessory = 0
+        elseif category == "Faces" then
+            desc.Face = 0
+        elseif category == "Heads" then
+            desc.Head = 0
+        elseif category == "Hats" then
+            --// Remove specific accessory
+            local current = desc:GetAccessories(true)
+            local newAcc = {}
+            for _, id in ipairs(current) do
+                if id ~= assetId then
+                    table.insert(newAcc, id)
+                end
+            end
+            desc:SetAccessories(newAcc, true)
+        end
+        
+        humanoid:ApplyDescription(desc)
+    end)
+end
+
+--// Open/Close Original Window
+function shhhhnayy05:OpenOriginalWindow()
+    self:ScanOriginalClothes()
+    self.OriginalWindow.Visible = true
+    self.OriginalWindow.Size = UDim2.new(0, 0, 0, 0)
+    
+    TweenService:Create(self.OriginalWindow, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 250, 0, 300)
+    }):Play()
+end
+
+function shhhhnayy05:CloseOriginalWindow()
+    TweenService:Create(self.OriginalWindow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    
+    wait(0.2)
+    self.OriginalWindow.Visible = false
+end
+
+--// Open/Close Category Window
+function shhhhnayy05:OpenCategoryWindow()
+    self.CategoryWindow.Visible = true
+    self.CategoryWindow.Size = UDim2.new(0, 0, 0, 0)
+    
+    TweenService:Create(self.CategoryWindow, TweenInfo.new(0.3, Enum.EasingStyle.Back), {
+        Size = UDim2.new(0, 200, 0, 350)
+    }):Play()
+    
+    for id, data in pairs(self.CategoryButtons) do
+        data.Selected.Visible = (id == self.CurrentCategory)
+        if id == self.CurrentCategory then
+            data.Button.BackgroundColor3 = Color3.fromRGB(50, 50, 90)
+        else
+            data.Button.BackgroundColor3 = Color3.fromRGB(30, 30, 50)
+        end
+    end
+end
+
+function shhhhnayy05:CloseCategoryWindow()
+    TweenService:Create(self.CategoryWindow, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    
+    wait(0.2)
+    self.CategoryWindow.Visible = false
+end
+
+--// Get Thumbnail
+function shhhhnayy05:GetThumbnail(assetId)
+    return string.format("https://www.roblox.com/asset-thumbnail/image?assetId=%d&width=150&height=150&format=png", assetId)
+end
+
+--// Get Asset Info
+function shhhhnayy05:GetAssetInfo(assetId)
+    local success, info = pcall(function()
+        return MarketplaceService:GetProductInfo(tonumber(assetId))
+    end)
+    if success then
+        return info
+    else
+        return nil
+    end
+end
+
+--// View Item
+function shhhhnayy05:ViewItem(assetId)
+    if not assetId or assetId == "" then
+        self.ItemName.Text = "❌ Masukkan ID!"
+        self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
+        delay(2, function()
+            self.ItemName.Text = "No item selected"
+            self.ItemName.TextColor3 = Color3.fromRGB(255, 255, 255)
+        end)
+        return
+    end
+    
+    --// Validate ID is number
+    local numId = tonumber(assetId)
+    if not numId then
+        self.ItemName.Text = "❌ ID harus angka!"
+        self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    self.LoadingSpinner.Visible = true
+    self.PreviewImage.Image = ""
+    self.ItemStatus.Text = "Status: Loading..."
+    self.ItemStatus.TextColor3 = Color3.fromRGB(100, 200, 255)
+    
+    --// Get info with timeout
+    local info = nil
+    local success, err = pcall(function()
+        info = self:GetAssetInfo(assetId)
+    end)
+    
+    if success and info and info.Name then
+        self.CurrentItem = {
+            id = numId,
+            name = info.Name,
+            type = info.AssetTypeId,
+            creator = info.Creator and info.Creator.Name or "Unknown",
+            category = self.CurrentCategory
+        }
+        
+        self.PreviewImage.Image = self:GetThumbnail(numId)
+        self.ItemName.Text = info.Name
+        self.ItemName.TextColor3 = Color3.fromRGB(255, 255, 255)
+        self.ItemType.Text = "Kategori: " .. self.CurrentCategory
+        
+        self:CheckEquippedStatus()
+    else
+        self.ItemName.Text = "❌ Item tidak ditemukan!"
+        self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
+        self.ItemType.Text = "Kategori: " .. self.CurrentCategory
+        self.ItemStatus.Text = "Status: Error - Invalid ID"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        self.CurrentItem = nil
+    end
+    
+    self.LoadingSpinner.Visible = false
+end
+
+--// Check Equipped Status
+function shhhhnayy05:CheckEquippedStatus()
+    if not self.CurrentItem then 
+        self.ItemStatus.Text = "Status: Ready"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 150)
+        return 
+    end
+    
+    local category = self.CurrentCategory
+    local id = self.CurrentItem.id
+    local isEquipped = false
+    
+    if category == "ClassicShirts" and self.EquippedItems.ClassicShirts then
+        isEquipped = self.EquippedItems.ClassicShirts.id == id
+    elseif category == "ClassicPants" and self.EquippedItems.ClassicPants then
+        isEquipped = self.EquippedItems.ClassicPants.id == id
+    elseif category == "TShirts" and self.EquippedItems.TShirts then
+        isEquipped = self.EquippedItems.TShirts.id == id
+    elseif category == "Hair" and self.EquippedItems.Hair then
+        isEquipped = self.EquippedItems.Hair.id == id
+    elseif category == "Faces" and self.EquippedItems.Faces then
+        isEquipped = self.EquippedItems.Faces.id == id
+    elseif category == "Heads" and self.EquippedItems.Heads then
+        isEquipped = self.EquippedItems.Heads.id == id
+    elseif category == "Hats" then
+        for _, item in ipairs(self.EquippedItems.Hats) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "HeadAccessories" then
+        for _, item in ipairs(self.EquippedItems.HeadAccessories) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "FaceAccessories" then
+        for _, item in ipairs(self.EquippedItems.FaceAccessories) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Neck" then
+        for _, item in ipairs(self.EquippedItems.Neck) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Shoulder" then
+        for _, item in ipairs(self.EquippedItems.Shoulder) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Front" then
+        for _, item in ipairs(self.EquippedItems.Front) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Back" then
+        for _, item in ipairs(self.EquippedItems.Back) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Waist" then
+        for _, item in ipairs(self.EquippedItems.Waist) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Gear" then
+        for _, item in ipairs(self.EquippedItems.Gear) do
+            if item.id == id then isEquipped = true break end
+        end
+    elseif category == "Animations" and self.EquippedItems.Animations then
+        isEquipped = self.EquippedItems.Animations.id == id
+    end
+    
+    self.IsItemEquipped = isEquipped
+    
+    if isEquipped then
+        self.ItemStatus.Text = "Status: ✅ Sudah dipakai"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        self.EquipBtn.Text = "✅ SUDAH DIPAKAI"
+        self.EquipBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+    else
+        self.ItemStatus.Text = "Status: ❌ Belum dipakai"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 200, 100)
+        self.EquipBtn.Text = "✅ GUNAKAN"
+        self.EquipBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    end
+end
+
+--// Equip Item (Anti-Visual)
+function shhhhnayy05:EquipItem()
+    if not self.CurrentItem then
+        self.ItemStatus.Text = "Status: ❌ View item dulu!"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    if self.IsItemEquipped then
+        self.ItemStatus.Text = "Status: ⚠️ Sudah dipakai!"
+        return
+    end
+    
+    local assetId = self.CurrentItem.id
+    local category = self.CurrentCategory
+    
+    local char = LocalPlayer.Character
+    if not char then 
+        self.ItemStatus.Text = "Status: ❌ Character tidak ada!"
+        return 
+    end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then 
+        self.ItemStatus.Text = "Status: ❌ Humanoid tidak ada!"
+        return 
+    end
+    
+    local desc = humanoid:GetAppliedDescription()
+    if not desc then
+        desc = Instance.new("HumanoidDescription")
+    end
+    
+    local success, err = pcall(function()
+        if category == "ClassicShirts" then
+            desc.Shirt = assetId
+            self.EquippedItems.ClassicShirts = self.CurrentItem
+        elseif category == "ClassicPants" then
+            desc.Pants = assetId
+            self.EquippedItems.ClassicPants = self.CurrentItem
+        elseif category == "TShirts" then
+            desc.GraphicTShirt = assetId
+            self.EquippedItems.TShirts = self.CurrentItem
+        elseif category == "Hair" then
+            desc.HairAccessory = assetId
+            self.EquippedItems.Hair = self.CurrentItem
+        elseif category == "Faces" then
+            desc.Face = assetId
+            self.EquippedItems.Faces = self.CurrentItem
+        elseif category == "Heads" then
+            desc.Head = assetId
+            self.EquippedItems.Heads = self.CurrentItem
+        elseif category == "Hats" then
+            table.insert(self.EquippedItems.Hats, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "HeadAccessories" then
+            table.insert(self.EquippedItems.HeadAccessories, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "FaceAccessories" then
+            table.insert(self.EquippedItems.FaceAccessories, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "Neck" then
+            table.insert(self.EquippedItems.Neck, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "Shoulder" then
+            table.insert(self.EquippedItems.Shoulder, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "Front" then
+            table.insert(self.EquippedItems.Front, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "Back" then
+            table.insert(self.EquippedItems.Back, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "Waist" then
+            table.insert(self.EquippedItems.Waist, self.CurrentItem)
+            local current = desc:GetAccessories(true)
+            table.insert(current, assetId)
+            desc:SetAccessories(current, true)
+        elseif category == "Gear" then
+            table.insert(self.EquippedItems.Gear, self.CurrentItem)
+            spawn(function()
+                local success, tool = pcall(function()
+                    return InsertService:LoadAsset(assetId):GetChildren()[1]
+                end)
+                if success and tool and tool:IsA("Tool") then
+                    tool.Parent = LocalPlayer.Backpack
+                end
+            end)
+        elseif category == "Animations" then
+            desc.IdleAnimation = assetId
+            self.EquippedItems.Animations = self.CurrentItem
+        elseif category == "Bundles" then
+            self.EquippedItems.Bundles = self.CurrentItem
+        end
+        
+        humanoid:ApplyDescription(desc)
+    end)
+    
+    if success then
+        self.IsItemEquipped = true
+        self.ItemStatus.Text = "Status: ✅ Berhasil dipakai!"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
+        self.EquipBtn.Text = "✅ SUDAH DIPAKAI"
+        self.EquipBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        self:UpdateEquippedCount()
+    else
+        self.ItemStatus.Text = "Status: ❌ Error!"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end
+
+--// Unequip Item
+function shhhhnayy05:UnequipItem()
+    if not self.CurrentItem then
+        self.ItemStatus.Text = "Status: ❌ Tidak ada item!"
+        return
+    end
+    
+    if not self.IsItemEquipped then
+        self.ItemStatus.Text = "Status: ⚠️ Belum dipakai!"
+        return
+    end
+    
+    local assetId = self.CurrentItem.id
+    local category = self.CurrentCategory
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return end
+    
+    local desc = humanoid:GetAppliedDescription()
+    if not desc then
+        desc = Instance.new("HumanoidDescription")
+    end
+    
+    local success = pcall(function()
+        if category == "ClassicShirts" then
+            desc.Shirt = 0
+            self.EquippedItems.ClassicShirts = nil
+        elseif category == "ClassicPants" then
+            desc.Pants = 0
+            self.EquippedItems.ClassicPants = nil
+        elseif category == "TShirts" then
+            desc.GraphicTShirt = 0
+            self.EquippedItems.TShirts = nil
+        elseif category == "Hair" then
+            desc.HairAccessory = 0
+            self.EquippedItems.Hair = nil
+        elseif category == "Faces" then
+            desc.Face = 0
+            self.EquippedItems.Faces = nil
+        elseif category == "Heads" then
+            desc.Head = 0
+            self.EquippedItems.Heads = nil
+        elseif category == "Hats" then
+            for i, item in ipairs(self.EquippedItems.Hats) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Hats, i)
+                    break
+                end
+            end
+        elseif category == "HeadAccessories" then
+            for i, item in ipairs(self.EquippedItems.HeadAccessories) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.HeadAccessories, i)
+                    break
+                end
+            end
+        elseif category == "FaceAccessories" then
+            for i, item in ipairs(self.EquippedItems.FaceAccessories) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.FaceAccessories, i)
+                    break
+                end
+            end
+        elseif category == "Neck" then
+            for i, item in ipairs(self.EquippedItems.Neck) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Neck, i)
+                    break
+                end
+            end
+        elseif category == "Shoulder" then
+            for i, item in ipairs(self.EquippedItems.Shoulder) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Shoulder, i)
+                    break
+                end
+            end
+        elseif category == "Front" then
+            for i, item in ipairs(self.EquippedItems.Front) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Front, i)
+                    break
+                end
+            end
+        elseif category == "Back" then
+            for i, item in ipairs(self.EquippedItems.Back) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Back, i)
+                    break
+                end
+            end
+        elseif category == "Waist" then
+            for i, item in ipairs(self.EquippedItems.Waist) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Waist, i)
+                    break
+                end
+            end
+        elseif category == "Gear" then
+            for i, item in ipairs(self.EquippedItems.Gear) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Gear, i)
+                    break
+                end
+            end
+        elseif category == "Animations" then
+            desc.IdleAnimation = 0
+            self.EquippedItems.Animations = nil
+        elseif category == "Bundles" then
+            self.EquippedItems.Bundles = nil
+        end
+        
+        --// Rebuild accessories
+        local allAcc = {}
+        for _, cat in ipairs({"Hats", "HeadAccessories", "FaceAccessories", "Neck", "Shoulder", "Front", "Back", "Waist"}) do
+            for _, item in ipairs(self.EquippedItems[cat] or {}) do
+                table.insert(allAcc, item.id)
+            end
+        end
+        desc:SetAccessories(allAcc, true)
+        
+        humanoid:ApplyDescription(desc)
+    end)
+    
+    if success then
+        self.IsItemEquipped = false
+        self.ItemStatus.Text = "Status: ❌ Berhasil dilepas!"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 200, 100)
+        self.EquipBtn.Text = "✅ GUNAKAN"
+        self.EquipBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        self:UpdateEquippedCount()
+    end
+end
+
+--// Update Equipped Count
+function shhhhnayy05:UpdateEquippedCount()
+    local count = 0
+    
+    if self.EquippedItems.ClassicShirts then count = count + 1 end
+    if self.EquippedItems.ClassicPants then count = count + 1 end
+    if self.EquippedItems.TShirts then count = count + 1 end
+    if self.EquippedItems.Hair then count = count + 1 end
+    if self.EquippedItems.Faces then count = count + 1 end
+    if self.EquippedItems.Heads then count = count + 1 end
+    if self.EquippedItems.Animations then count = count + 1 end
+    if self.EquippedItems.Bundles then count = count + 1 end
+    
+    count = count + #self.EquippedItems.Hats
+    count = count + #self.EquippedItems.HeadAccessories
+    count = count + #self.EquippedItems.FaceAccessories
+    count = count + #self.EquippedItems.Neck
+    count = count + #self.EquippedItems.Shoulder
+    count = count + #self.EquippedItems.Front
+    count = count + #self.EquippedItems.Back
+    count = count + #self.EquippedItems.Waist
+    count = count + #self.EquippedItems.Gear
+    
+    self.EquippedText.Text = "🎽 Sedang Dipakai: " .. count .. " items"
+end
+
+--// Minimize Main
+function shhhhnayy05:MinimizeMain()
+    self.MainFrame.Visible = false
+    self.CategoryWindow.Visible = false
+    self.OriginalWindow.Visible = false
+    self.MinimizedIcon.Visible = true
+    
+    TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.new(0, 60, 0, 60)}):Play()
+    wait(0.15)
+    TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+end
+
+--// Restore Main
+function shhhhnayy05:RestoreMain()
+    self.MinimizedIcon.Visible = false
+    self.MainFrame.Visible = true
+    
+    self.MainFrame.Size = UDim2.new(0, 0, 0, 0)
+    TweenService:Create(self.MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {Size = UDim2.new(0, 350, 0, 450)}):Play()
+end
+
+--// Dragging
+function shhhhnayy05:EnableDragging(frame, handle)
+    handle = handle or frame
+    
+    local dragging = false
+    local dragInput, dragStart, startPos
+    
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = frame.Position
+            
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    
+    handle.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+        end
+    end)
+end
+
+--// Initialize
+function shhhhnayy05:Init()
+    --// Dragging
+    self:EnableDragging(self.MainFrame, self.TitleBar)
+    self:EnableDragging(self.CategoryWindow, self.CatTitleBar)
+    self:EnableDragging(self.OriginalWindow, self.OriginalTitleBar)
+    self:EnableDragging(self.MinimizedIcon)
+    
+    --// Open Category
+    self.OpenCategoryBtn.MouseButton1Click:Connect(function()
+        if self.CategoryWindow.Visible then
+            self:CloseCategoryWindow()
+        else
+            self:OpenCategoryWindow()
+        end
+    end)
+    
+    --// Close Category
+    self.CloseCatBtn.MouseButton1Click:Connect(function()
+        self:CloseCategoryWindow()
+    end)
+    
+    --// Open Original Clothes
+    self.OriginalClothesBtn.MouseButton1Click:Connect(function()
+        if self.OriginalWindow.Visible then
+            self:CloseOriginalWindow()
+        else
+            self:OpenOriginalWindow()
+        end
+    end)
+    
+    --// Close Original
+    self.CloseOriginalBtn.MouseButton1Click:Connect(function()
+        self:CloseOriginalWindow()
+    end)
+    
+    --// View
+    self.ViewBtn.MouseButton1Click:Connect(function()
+        self:ViewItem(self.IDInput.Text)
+    end)
+    
+    self.IDInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            self:ViewItem(self.IDInput.Text)
+        end
+    end)
+    
+    --// Equip/Unequip
+    self.EquipBtn.MouseButton1Click:Connect(function()
+        self:EquipItem()
+    end)
+    
+    self.UnequipBtn.MouseButton1Click:Connect(function()
+        self:UnequipItem()
+    end)
+    
+    --// Minimize/Restore
+    self.MinimizeBtn.MouseButton1Click:Connect(function()
+        self:MinimizeMain()
+    end)
+    
+    self.MinimizedIcon.MouseButton1Click:Connect(function()
+        self:RestoreMain()
+    end)
+    
+    --// Close
+    self.CloseBtn.MouseButton1Click:Connect(function()
+        self.ScreenGui:Destroy()
+    end)
+    
+    --// Hover effects
+    self.OpenCategoryBtn.MouseEnter:Connect(function()
+        TweenService:Create(self.OpenCategoryBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 180, 255)}):Play()
+    end)
+    self.OpenCategoryBtn.MouseLeave:Connect(function()
+        TweenService:Create(self.OpenCategoryBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 150, 255)}):Play()
+    end)
+    
+    self.OriginalClothesBtn.MouseEnter:Connect(function()
+        TweenService:Create(self.OriginalClothesBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 180, 0)}):Play()
+    end)
+    self.OriginalClothesBtn.MouseLeave:Connect(function()
+        TweenService:Create(self.OriginalClothesBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 150, 0)}):Play()
+    end)
+    
+    self.ViewBtn.MouseEnter:Connect(function()
+        TweenService:Create(self.ViewBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(120, 120, 255)}):Play()
+    end)
+    self.ViewBtn.MouseLeave:Connect(function()
+        TweenService:Create(self.ViewBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(100, 100, 255)}):Play()
+    end)
+    
+    self.EquipBtn.MouseEnter:Connect(function()
+        if not self.IsItemEquipped then
+            TweenService:Create(self.EquipBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 230, 115)}):Play()
+        end
+    end)
+    self.EquipBtn.MouseLeave:Connect(function()
+        if not self.IsItemEquipped then
+            TweenService:Create(self.EquipBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(0, 200, 100)}):Play()
+        end
+    end)
+    
+    self.UnequipBtn.MouseEnter:Connect(function()
+        TweenService:Create(self.UnequipBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 100, 100)}):Play()
+    end)
+    self.UnequipBtn.MouseLeave:Connect(function()
+        TweenService:Create(self.UnequipBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 70, 70)}):Play()
+    end)
+    
+    self.MinimizeBtn.MouseEnter:Connect(function()
+        TweenService:Create(self.MinimizeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 100)}):Play()
+    end)
+    self.MinimizeBtn.MouseLeave:Connect(function()
+        TweenService:Create(self.MinimizeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 70)}):Play()
+    end)
+    
+    self.CloseBtn.MouseEnter:Connect(function()
+        TweenService:Create(self.CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 100, 100)}):Play()
+    end)
+    self.CloseBtn.MouseLeave:Connect(function()
+        TweenService:Create(self.CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 70, 70)}):Play()
+    end)
+    
+    --// Initial scan
+    wait(1)
+    self:ScanOriginalClothes()
+    self:UpdateEquippedCount()
+    
+    print("✅ shhhhnayy05 Marketplace Loaded!")
+    print("🔧 Fixed: Error handling + ID validation")
+    print("👕 Feature: Original clothes can be unequipped")
+end
+
+--// Character Added
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+    Character = newChar
+    Humanoid = newChar:WaitForChild("Humanoid")
+    
+    wait(1)
+    shhhhnayy05:ScanOriginalClothes()
+end)
+
+--// Start
+shhhhnayy05:Init()
+
+return shhhhnayy05
