@@ -1,5 +1,5 @@
---// shhhhnayy05 Marketplace GUI - Delta Optimized
---// Direct Load Version - No External Dependencies
+--// shhhhnayy05 Marketplace GUI - Delta/Mobile Fixed
+--// Version 3.0 - HumanoidDescription Method Fixed
 --// Support: Delta, Synapse X, KRNL, Fluxus, Electron, Script-Ware, etc.
 
 --// Services
@@ -10,6 +10,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 local InsertService = game:GetService("InsertService")
+local RunService = game:GetService("RunService")
 
 --// Variables
 local LocalPlayer = Players.LocalPlayer
@@ -26,36 +27,10 @@ local function createProtectedGUI()
     gui.ResetOnSpawn = false
     gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     
-    --// Try multiple methods for Delta and other executors
-    local success = false
+    local success = pcall(function()
+        gui.Parent = CoreGui
+    end)
     
-    --// Method 1: Delta (using _G or global)
-    if not success and _G and typeof(_G) == "table" then
-        success = pcall(function()
-            -- Delta sometimes uses _G.Delta or just checks for CoreGui access
-            gui.Parent = CoreGui
-        end)
-    end
-    
-    --// Method 2: Check for Delta specific
-    if not success and typeof(getgenv) == "function" then
-        local genv = getgenv()
-        if genv.Delta or genv.delta then
-            success = pcall(function()
-                gui.Parent = CoreGui
-            end)
-        end
-    end
-    
-    --// Method 3: Direct CoreGui (works on most executors including Delta)
-    if not success then
-        success = pcall(function()
-            -- Delta allows CoreGui access directly
-            gui.Parent = CoreGui
-        end)
-    end
-    
-    --// Method 4: PlayerGui fallback
     if not success then
         pcall(function()
             gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
@@ -675,7 +650,7 @@ OriginalListCorner.CornerRadius = UDim.new(0, 8)
 OriginalListCorner.Parent = shhhhnayy05.OriginalListFrame
 
 --// ============================================
---// MINIMIZED ICON
+--// MINIMIZED ICON (BULAT DENGAN ANIMASI)
 --// ============================================
 shhhhnayy05.MinimizedIcon = Instance.new("TextButton")
 shhhhnayy05.MinimizedIcon.Name = "shhhhnayy05_MinIcon"
@@ -693,6 +668,12 @@ shhhhnayy05.MinimizedIcon.Parent = shhhhnayy05.ScreenGui
 local IconCorner = Instance.new("UICorner")
 IconCorner.CornerRadius = UDim.new(1, 0)
 IconCorner.Parent = shhhhnayy05.MinimizedIcon
+
+local IconStroke = Instance.new("UIStroke")
+IconStroke.Color = Color3.fromRGB(0, 200, 255)
+IconStroke.Thickness = 3
+IconStroke.Transparency = 0.5
+IconStroke.Parent = shhhhnayy05.MinimizedIcon
 
 --// Data Storage
 shhhhnayy05.CurrentCategory = "All"
@@ -720,19 +701,52 @@ shhhhnayy05.EquippedItems = {
 }
 
 --// ============================================
---// FUNCTIONS
+--// FIXED FUNCTIONS - HUMANOID DESCRIPTION METHOD
 --// ============================================
 
+--// Fungsi helper untuk apply description yang aman
+function shhhhnayy05:SafeApplyDescription(humanoid, description)
+    local success, err = pcall(function()
+        -- Method 1: Direct ApplyDescription (PC)
+        humanoid:ApplyDescription(description)
+    end)
+    
+    if not success then
+        -- Method 2: ApplyDescriptionReset (Mobile/Delta)
+        success, err = pcall(function()
+            humanoid:ApplyDescriptionReset(description)
+        end)
+    end
+    
+    if not success then
+        -- Method 3: SetDescription (Alternative)
+        success, err = pcall(function()
+            if humanoid.SetDescription then
+                humanoid:SetDescription(description)
+            else
+                error("No valid method found")
+            end
+        end)
+    end
+    
+    return success, err
+end
+
+--// Scan original clothes dengan pengecekan lebih baik
 function shhhhnayy05:ScanOriginalClothes()
     local char = LocalPlayer.Character
-    if not char then return end
+    if not char then 
+        self.OriginalStatus.Text = "👕 Pakaian Awal: Error - No Char"
+        return 
+    end
     
     local humanoid = char:FindFirstChildOfClass("Humanoid")
-    if not humanoid then return end
+    if not humanoid then 
+        self.OriginalStatus.Text = "👕 Pakaian Awal: Error - No Humanoid"
+        return 
+    end
     
-    local desc = humanoid:GetAppliedDescription()
-    if not desc then return end
-    
+    -- Reset data
     self.OriginalClothes = {
         ClassicShirts = nil,
         ClassicPants = nil,
@@ -743,36 +757,88 @@ function shhhhnayy05:ScanOriginalClothes()
         Heads = nil
     }
     
-    if desc.Shirt and desc.Shirt > 0 then
-        self.OriginalClothes.ClassicShirts = {id = desc.Shirt, name = "Original Shirt", category = "ClassicShirts"}
+    -- Get description dengan pengecekan
+    local desc = nil
+    local success = pcall(function()
+        desc = humanoid:GetAppliedDescription()
+    end)
+    
+    if not success or not desc then
+        -- Coba method alternatif
+        success, desc = pcall(function()
+            return humanoid:WaitForChild("HumanoidDescription", 2)
+        end)
     end
     
-    if desc.Pants and desc.Pants > 0 then
-        self.OriginalClothes.ClassicPants = {id = desc.Pants, name = "Original Pants", category = "ClassicPants"}
+    if not success or not desc then
+        self.OriginalStatus.Text = "👕 Pakaian Awal: Error - No Desc"
+        return
     end
     
-    if desc.GraphicTShirt and desc.GraphicTShirt > 0 then
-        self.OriginalClothes.TShirts = {id = desc.GraphicTShirt, name = "Original T-Shirt", category = "TShirts"}
-    end
-    
-    if desc.HairAccessory and desc.HairAccessory > 0 then
-        self.OriginalClothes.Hair = {id = desc.HairAccessory, name = "Original Hair", category = "Hair"}
-    end
-    
-    if desc.Face and desc.Face > 0 then
-        self.OriginalClothes.Faces = {id = desc.Face, name = "Original Face", category = "Faces"}
-    end
-    
-    if desc.Head and desc.Head > 0 then
-        self.OriginalClothes.Heads = {id = desc.Head, name = "Original Head", category = "Heads"}
-    end
-    
-    local accessories = desc:GetAccessories(true)
-    for _, accId in ipairs(accessories) do
-        if accId > 0 then
-            table.insert(self.OriginalClothes.Hats, {id = accId, name = "Original Accessory", category = "Hats"})
+    -- Parse description
+    pcall(function()
+        if desc.Shirt and tonumber(desc.Shirt) and desc.Shirt > 0 then
+            self.OriginalClothes.ClassicShirts = {
+                id = desc.Shirt, 
+                name = "Original Shirt", 
+                category = "ClassicShirts"
+            }
         end
-    end
+        
+        if desc.Pants and tonumber(desc.Pants) and desc.Pants > 0 then
+            self.OriginalClothes.ClassicPants = {
+                id = desc.Pants, 
+                name = "Original Pants", 
+                category = "ClassicPants"
+            }
+        end
+        
+        if desc.GraphicTShirt and tonumber(desc.GraphicTShirt) and desc.GraphicTShirt > 0 then
+            self.OriginalClothes.TShirts = {
+                id = desc.GraphicTShirt, 
+                name = "Original T-Shirt", 
+                category = "TShirts"
+            }
+        end
+        
+        if desc.HairAccessory and tonumber(desc.HairAccessory) and desc.HairAccessory > 0 then
+            self.OriginalClothes.Hair = {
+                id = desc.HairAccessory, 
+                name = "Original Hair", 
+                category = "Hair"
+            }
+        end
+        
+        if desc.Face and tonumber(desc.Face) and desc.Face > 0 then
+            self.OriginalClothes.Faces = {
+                id = desc.Face, 
+                name = "Original Face", 
+                category = "Faces"
+            }
+        end
+        
+        if desc.Head and tonumber(desc.Head) and desc.Head > 0 then
+            self.OriginalClothes.Heads = {
+                id = desc.Head, 
+                name = "Original Head", 
+                category = "Heads"
+            }
+        end
+        
+        -- Accessories
+        if desc.GetAccessories then
+            local accessories = desc:GetAccessories(true)
+            for _, accId in ipairs(accessories) do
+                if tonumber(accId) and accId > 0 then
+                    table.insert(self.OriginalClothes.Hats, {
+                        id = accId, 
+                        name = "Original Accessory", 
+                        category = "Hats"
+                    })
+                end
+            end
+        end
+    end)
     
     self:UpdateOriginalStatus()
     self:PopulateOriginalList()
@@ -792,6 +858,7 @@ function shhhhnayy05:UpdateOriginalStatus()
 end
 
 function shhhhnayy05:PopulateOriginalList()
+    -- Clear list
     for _, child in ipairs(self.OriginalListFrame:GetChildren()) do
         if child:IsA("Frame") then
             child:Destroy()
@@ -801,6 +868,7 @@ function shhhhnayy05:PopulateOriginalList()
     local yOffset = 5
     local items = {}
     
+    -- Collect items
     if self.OriginalClothes.ClassicShirts then
         table.insert(items, {data = self.OriginalClothes.ClassicShirts, type = "ClassicShirts", name = "👕 Original Shirt"})
     end
@@ -823,6 +891,7 @@ function shhhhnayy05:PopulateOriginalList()
         table.insert(items, {data = acc, type = "Hats", name = "🎩 Original Acc #" .. i})
     end
     
+    -- Create UI
     for _, item in ipairs(items) do
         local row = Instance.new("Frame")
         row.Size = UDim2.new(0.95, 0, 0, 50)
@@ -902,12 +971,17 @@ function shhhhnayy05:UnequipOriginalItem(category, assetId)
     local humanoid = char:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
     
-    local desc = humanoid:GetAppliedDescription()
+    -- Get current description
+    local desc = nil
+    pcall(function()
+        desc = humanoid:GetAppliedDescription()
+    end)
+    
     if not desc then
         desc = Instance.new("HumanoidDescription")
     end
     
-    pcall(function()
+    local success, err = pcall(function()
         if category == "ClassicShirts" then
             desc.Shirt = 0
         elseif category == "ClassicPants" then
@@ -931,8 +1005,13 @@ function shhhhnayy05:UnequipOriginalItem(category, assetId)
             desc:SetAccessories(newAcc, true)
         end
         
-        humanoid:ApplyDescription(desc)
+        -- Apply dengan method aman
+        self:SafeApplyDescription(humanoid, desc)
     end)
+    
+    if not success then
+        warn("Unequip failed: " .. tostring(err))
+    end
 end
 
 function shhhhnayy05:OpenOriginalWindow()
@@ -982,13 +1061,17 @@ function shhhhnayy05:CloseCategoryWindow()
 end
 
 function shhhhnayy05:GetThumbnail(assetId)
-    return string.format("https://www.roblox.com/asset-thumbnail/image?assetId=%d&width=150&height=150&format=png", assetId)
+    return string.format("https://www.roblox.com/asset-thumbnail/image?assetId=%d&width=150&height=150&format=png", tonumber(assetId) or 0)
 end
 
 function shhhhnayy05:GetAssetInfo(assetId)
+    local numId = tonumber(assetId)
+    if not numId then return nil end
+    
     local success, info = pcall(function()
-        return MarketplaceService:GetProductInfo(tonumber(assetId))
+        return MarketplaceService:GetProductInfo(numId)
     end)
+    
     if success then
         return info
     else
@@ -997,64 +1080,81 @@ function shhhhnayy05:GetAssetInfo(assetId)
 end
 
 function shhhhnayy05:ViewItem(assetId)
+    -- Reset UI
+    self.ItemStatus.Text = "Status: Loading..."
+    self.ItemStatus.TextColor3 = Color3.fromRGB(100, 200, 255)
+    self.LoadingText.Visible = true
+    
+    -- Validasi
     if not assetId or assetId == "" then
+        self.LoadingText.Visible = false
         self.ItemName.Text = "❌ Masukkan ID!"
         self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
+        self.ItemStatus.Text = "Status: Error - Empty ID"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+        self.CurrentItem = nil
         delay(2, function()
             self.ItemName.Text = "No item selected"
             self.ItemName.TextColor3 = Color3.fromRGB(255, 255, 255)
+            self.ItemStatus.Text = "Status: Ready"
+            self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 150)
         end)
         return
     end
     
     local numId = tonumber(assetId)
     if not numId then
+        self.LoadingText.Visible = false
         self.ItemName.Text = "❌ ID harus angka!"
         self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
-        return
-    end
-    
-    self.LoadingText.Visible = true
-    self.PreviewImage.Image = ""
-    self.ItemStatus.Text = "Status: Loading..."
-    self.ItemStatus.TextColor3 = Color3.fromRGB(100, 200, 255)
-    
-    local info = nil
-    local success, err = pcall(function()
-        info = self:GetAssetInfo(assetId)
-    end)
-    
-    if success and info and info.Name then
-        self.CurrentItem = {
-            id = numId,
-            name = info.Name,
-            type = info.AssetTypeId,
-            creator = info.Creator and info.Creator.Name or "Unknown",
-            category = self.CurrentCategory
-        }
-        
-        self.PreviewImage.Image = self:GetThumbnail(numId)
-        self.ItemName.Text = info.Name
-        self.ItemName.TextColor3 = Color3.fromRGB(255, 255, 255)
-        self.ItemType.Text = "Kategori: " .. self.CurrentCategory
-        
-        self:CheckEquippedStatus()
-    else
-        self.ItemName.Text = "❌ Item tidak ditemukan!"
-        self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
-        self.ItemType.Text = "Kategori: " .. self.CurrentCategory
         self.ItemStatus.Text = "Status: Error - Invalid ID"
         self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
         self.CurrentItem = nil
+        return
     end
     
-    self.LoadingText.Visible = false
+    self.PreviewImage.Image = ""
+    
+    -- Async load
+    spawn(function()
+        local info = self:GetAssetInfo(numId)
+        
+        RunService.Heartbeat:Wait()
+        self.LoadingText.Visible = false
+        
+        if info and info.Name then
+            self.CurrentItem = {
+                id = numId,
+                name = info.Name,
+                type = info.AssetTypeId,
+                creator = info.Creator and info.Creator.Name or "Unknown",
+                category = self.CurrentCategory
+            }
+            
+            self.PreviewImage.Image = self:GetThumbnail(numId)
+            self.ItemName.Text = info.Name
+            self.ItemName.TextColor3 = Color3.fromRGB(255, 255, 255)
+            self.ItemType.Text = "Kategori: " .. self.CurrentCategory
+            
+            self:CheckEquippedStatus()
+        else
+            self.ItemName.Text = "❌ Item tidak ditemukan!"
+            self.ItemName.TextColor3 = Color3.fromRGB(255, 100, 100)
+            self.ItemType.Text = "Kategori: " .. self.CurrentCategory
+            self.ItemStatus.Text = "Status: ❌ Error - Invalid ID"
+            self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+            self.CurrentItem = nil
+            self.IsItemEquipped = false
+        end
+    end)
 end
 
 function shhhhnayy05:CheckEquippedStatus()
     if not self.CurrentItem then 
         self.ItemStatus.Text = "Status: Ready"
         self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 150)
+        self.IsItemEquipped = false
+        self:UpdateEquipButton()
         return 
     end
     
@@ -1076,15 +1176,28 @@ function shhhhnayy05:CheckEquippedStatus()
         isEquipped = self.EquippedItems.Heads.id == id
     elseif category == "Hats" then
         for _, item in ipairs(self.EquippedItems.Hats) do
-            if item.id == id then isEquipped = true break end
+            if item.id == id then 
+                isEquipped = true 
+                break 
+            end
         end
     elseif category == "Animations" and self.EquippedItems.Animations then
         isEquipped = self.EquippedItems.Animations.id == id
+    elseif category == "Gear" then
+        for _, item in ipairs(self.EquippedItems.Gear) do
+            if item.id == id then 
+                isEquipped = true 
+                break 
+            end
+        end
     end
     
     self.IsItemEquipped = isEquipped
-    
-    if isEquipped then
+    self:UpdateEquipButton()
+end
+
+function shhhhnayy05:UpdateEquipButton()
+    if self.IsItemEquipped then
         self.ItemStatus.Text = "Status: ✅ Sudah dipakai"
         self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
         self.EquipBtn.Text = "✅ SUDAH DIPAKAI"
@@ -1097,6 +1210,9 @@ function shhhhnayy05:CheckEquippedStatus()
     end
 end
 
+--// ============================================
+--// FIXED EQUIP METHOD
+--// ============================================
 function shhhhnayy05:EquipItem()
     if not self.CurrentItem then
         self.ItemStatus.Text = "Status: ❌ View item dulu!"
@@ -1124,12 +1240,22 @@ function shhhhnayy05:EquipItem()
         return 
     end
     
-    local desc = humanoid:GetAppliedDescription()
-    if not desc then
+    -- Get current description
+    local desc = nil
+    local success = pcall(function()
+        desc = humanoid:GetAppliedDescription()
+    end)
+    
+    if not success or not desc then
+        -- Buat description baru jika tidak ada
         desc = Instance.new("HumanoidDescription")
+        -- Copy existing properties jika bisa
+        pcall(function()
+            desc.Shirt = humanoid:FindFirstChild("Shirt") and 0 or 0
+        end)
     end
     
-    local success, err = pcall(function()
+    local equipSuccess, equipErr = pcall(function()
         if category == "ClassicShirts" then
             desc.Shirt = assetId
             self.EquippedItems.ClassicShirts = self.CurrentItem
@@ -1156,22 +1282,31 @@ function shhhhnayy05:EquipItem()
         elseif category == "Gear" then
             table.insert(self.EquippedItems.Gear, self.CurrentItem)
             spawn(function()
-                local success, tool = pcall(function()
+                local toolSuccess, tool = pcall(function()
                     return InsertService:LoadAsset(assetId):GetChildren()[1]
                 end)
-                if success and tool and tool:IsA("Tool") then
+                if toolSuccess and tool and tool:IsA("Tool") then
+                    local idValue = Instance.new("IntValue")
+                    idValue.Name = "shhhhnayy05_AssetId"
+                    idValue.Value = assetId
+                    idValue.Parent = tool
                     tool.Parent = LocalPlayer.Backpack
                 end
             end)
+            return -- Gear tidak perlu ApplyDescription
         elseif category == "Animations" then
             desc.IdleAnimation = assetId
             self.EquippedItems.Animations = self.CurrentItem
         end
         
-        humanoid:ApplyDescription(desc)
+        -- Apply dengan method aman
+        local applySuccess, applyErr = self:SafeApplyDescription(humanoid, desc)
+        if not applySuccess then
+            error("ApplyDescription failed: " .. tostring(applyErr))
+        end
     end)
     
-    if success then
+    if equipSuccess then
         self.IsItemEquipped = true
         self.ItemStatus.Text = "Status: ✅ Berhasil dipakai!"
         self.ItemStatus.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -1179,7 +1314,7 @@ function shhhhnayy05:EquipItem()
         self.EquipBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
         self:UpdateEquippedCount()
     else
-        self.ItemStatus.Text = "Status: ❌ Error!"
+        self.ItemStatus.Text = "Status: ❌ Error! " .. tostring(equipErr):sub(1, 30)
         self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end
@@ -1204,12 +1339,16 @@ function shhhhnayy05:UnequipItem()
     local humanoid = char:FindFirstChildOfClass("Humanoid")
     if not humanoid then return end
     
-    local desc = humanoid:GetAppliedDescription()
+    local desc = nil
+    pcall(function()
+        desc = humanoid:GetAppliedDescription()
+    end)
+    
     if not desc then
         desc = Instance.new("HumanoidDescription")
     end
     
-    local success = pcall(function()
+    local success, err = pcall(function()
         if category == "ClassicShirts" then
             desc.Shirt = 0
             self.EquippedItems.ClassicShirts = nil
@@ -1238,15 +1377,36 @@ function shhhhnayy05:UnequipItem()
         elseif category == "Animations" then
             desc.IdleAnimation = 0
             self.EquippedItems.Animations = nil
+        elseif category == "Gear" then
+            for i, item in ipairs(self.EquippedItems.Gear) do
+                if item.id == assetId then
+                    table.remove(self.EquippedItems.Gear, i)
+                    break
+                end
+            end
+            -- Remove from backpack
+            for _, tool in ipairs(LocalPlayer.Backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local toolId = tool:FindFirstChild("shhhhnayy05_AssetId")
+                    if toolId and toolId.Value == assetId then
+                        tool:Destroy()
+                    end
+                end
+            end
+            return -- Gear tidak perlu ApplyDescription
         end
         
-        local allAcc = {}
-        for _, item in ipairs(self.EquippedItems.Hats) do
-            table.insert(allAcc, item.id)
+        -- Update accessories untuk Hats
+        if category == "Hats" then
+            local allAcc = {}
+            for _, item in ipairs(self.EquippedItems.Hats) do
+                table.insert(allAcc, item.id)
+            end
+            desc:SetAccessories(allAcc, true)
         end
-        desc:SetAccessories(allAcc, true)
         
-        humanoid:ApplyDescription(desc)
+        -- Apply dengan method aman
+        self:SafeApplyDescription(humanoid, desc)
     end)
     
     if success then
@@ -1256,6 +1416,9 @@ function shhhhnayy05:UnequipItem()
         self.EquipBtn.Text = "✅ GUNAKAN"
         self.EquipBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
         self:UpdateEquippedCount()
+    else
+        self.ItemStatus.Text = "Status: ❌ Gagal dilepas!"
+        self.ItemStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end
 
@@ -1276,23 +1439,75 @@ function shhhhnayy05:UpdateEquippedCount()
     self.EquippedText.Text = "🎽 Sedang Dipakai: " .. count .. " items"
 end
 
+--// ============================================
+--// MINIMIZE ANIMATION EFFECTS
+--// ============================================
 function shhhhnayy05:MinimizeMain()
     self.MainFrame.Visible = false
     self.CategoryWindow.Visible = false
     self.OriginalWindow.Visible = false
-    self.MinimizedIcon.Visible = true
     
-    TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.new(0, 60, 0, 60)}):Play()
-    wait(0.15)
-    TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.3, Enum.EasingStyle.Back), {Size = UDim2.new(0, 50, 0, 50)}):Play()
+    self.MinimizedIcon.Visible = true
+    self.MinimizedIcon.Size = UDim2.new(0, 0, 0, 0)
+    
+    TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 60, 0, 60)
+    }):Play()
+    
+    spawn(function()
+        wait(0.4)
+        while self.MinimizedIcon.Visible do
+            TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.5), {
+                BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+            }):Play()
+            wait(0.5)
+            TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.5), {
+                BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+            }):Play()
+            wait(0.5)
+        end
+    end)
+    
+    spawn(function()
+        while self.MinimizedIcon.Visible do
+            local particle = Instance.new("Frame")
+            particle.Size = UDim2.new(0, 10, 0, 10)
+            particle.Position = UDim2.new(0.5, -5, 0.5, -5)
+            particle.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+            particle.BackgroundTransparency = 0.5
+            particle.BorderSizePixel = 0
+            particle.Parent = self.MinimizedIcon
+            
+            local pCorner = Instance.new("UICorner")
+            pCorner.CornerRadius = UDim.new(1, 0)
+            pCorner.Parent = particle
+            
+            local angle = math.random() * math.pi * 2
+            local distance = 40
+            local endX = math.cos(angle) * distance
+            local endY = math.sin(angle) * distance
+            
+            TweenService:Create(particle, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Position = UDim2.new(0.5, endX - 5, 0.5, endY - 5),
+                BackgroundTransparency = 1,
+                Size = UDim2.new(0, 0, 0, 0)
+            }):Play()
+            
+            game:GetService("Debris"):AddItem(particle, 0.8)
+            wait(0.2)
+        end
+    end)
 end
 
 function shhhhnayy05:RestoreMain()
     self.MinimizedIcon.Visible = false
-    self.MainFrame.Visible = true
     
+    self.MainFrame.Visible = true
     self.MainFrame.Size = UDim2.new(0, 0, 0, 0)
-    TweenService:Create(self.MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back), {Size = UDim2.new(0, 350, 0, 450)}):Play()
+    
+    TweenService:Create(self.MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 350, 0, 450)
+    }):Play()
 end
 
 function shhhhnayy05:EnableDragging(frame, handle)
@@ -1438,13 +1653,28 @@ function shhhhnayy05:Init()
         TweenService:Create(self.UnequipBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 70, 70)}):Play()
     end)
     
-    --// Initial scan
-    wait(1)
-    self:ScanOriginalClothes()
-    self:UpdateEquippedCount()
+    self.MinimizedIcon.MouseEnter:Connect(function()
+        TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.2), {
+            Size = UDim2.new(0, 55, 0, 55),
+            BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+        }):Play()
+    end)
+    
+    self.MinimizedIcon.MouseLeave:Connect(function()
+        TweenService:Create(self.MinimizedIcon, TweenInfo.new(0.2), {
+            Size = UDim2.new(0, 50, 0, 50),
+            BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+        }):Play()
+    end)
+    
+    --// Initial scan dengan delay
+    delay(2, function()
+        self:ScanOriginalClothes()
+        self:UpdateEquippedCount()
+    end)
     
     print("✅ shhhhnayy05 Marketplace Loaded!")
-    print("💻 Delta Compatible Version")
+    print("💻 Delta/Mobile Compatible Version 3.0")
 end
 
 --// Character Added
@@ -1452,8 +1682,9 @@ LocalPlayer.CharacterAdded:Connect(function(newChar)
     Character = newChar
     Humanoid = newChar:WaitForChild("Humanoid")
     
-    wait(1)
-    shhhhnayy05:ScanOriginalClothes()
+    delay(2, function()
+        shhhhnayy05:ScanOriginalClothes()
+    end)
 end)
 
 --// Start
