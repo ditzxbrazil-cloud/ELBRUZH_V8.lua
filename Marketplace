@@ -1,163 +1,73 @@
---// shhhhnayy05 Marketplace GUI - Full Executor Support
---// Support: Delta, Synapse X, KRNL, Fluxus, Electron, Script-Ware, Hydrogen, Codex, etc.
---// Anti-Visual System + Original Clothes Removal
+--// shhhhnayy05 Marketplace GUI - Delta Optimized
+--// Direct Load Version - No External Dependencies
+--// Support: Delta, Synapse X, KRNL, Fluxus, Electron, Script-Ware, etc.
 
 --// Services
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local HttpService = game:GetService("HttpService")
-local InsertService = game:GetService("InsertService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
-local StarterGui = game:GetService("StarterGui")
+local InsertService = game:GetService("InsertService")
 
 --// Variables
 local LocalPlayer = Players.LocalPlayer
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 
---// shhhhnayy05 GUI Setup
-local shhhhnayy05 = {}
-shhhhnayy05.ScreenGui = Instance.new("ScreenGui")
-shhhhnayy05.ScreenGui.Name = "shhhhnayy05_Marketplace"
-shhhhnayy05.ScreenGui.ResetOnSpawn = false
-shhhhnayy05.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
 --// ============================================
---// EXECUTOR DETECTION & PARENTING (FIXED)
+--// DELTA & EXECUTOR COMPATIBILITY LAYER
 --// ============================================
 
-local function protectGUI(gui)
-    --// Method 1: Synapse X
-    if typeof(syn) == "table" and typeof(syn.protect_gui) == "function" then
-        pcall(function()
-            syn.protect_gui(gui)
+local function createProtectedGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "shhhhnayy05_Marketplace"
+    gui.ResetOnSpawn = false
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    
+    --// Try multiple methods for Delta and other executors
+    local success = false
+    
+    --// Method 1: Delta (using _G or global)
+    if not success and _G and typeof(_G) == "table" then
+        success = pcall(function()
+            -- Delta sometimes uses _G.Delta or just checks for CoreGui access
             gui.Parent = CoreGui
         end)
-        return true
     end
     
-    --// Method 2: KRNL
-    if typeof(KRNL_LOADED) == "boolean" and KRNL_LOADED then
-        pcall(function()
+    --// Method 2: Check for Delta specific
+    if not success and typeof(getgenv) == "function" then
+        local genv = getgenv()
+        if genv.Delta or genv.delta then
+            success = pcall(function()
+                gui.Parent = CoreGui
+            end)
+        end
+    end
+    
+    --// Method 3: Direct CoreGui (works on most executors including Delta)
+    if not success then
+        success = pcall(function()
+            -- Delta allows CoreGui access directly
             gui.Parent = CoreGui
         end)
-        return true
     end
     
-    --// Method 3: Fluxus
-    if typeof(fluxus) == "table" and typeof(fluxus.protect_gui) == "function" then
+    --// Method 4: PlayerGui fallback
+    if not success then
         pcall(function()
-            fluxus.protect_gui(gui)
-            gui.Parent = CoreGui
+            gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
         end)
-        return true
     end
     
-    --// Method 4: Delta (FIXED)
-    if typeof(Delta) == "table" then
-        --// Delta menggunakan sistem yang berbeda
-        pcall(function()
-            if Delta["protect_gui"] then
-                Delta["protect_gui"](gui)
-            end
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 5: Electron
-    if typeof(electron) == "table" and typeof(electron.protect_gui) == "function" then
-        pcall(function()
-            electron.protect_gui(gui)
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 6: Script-Ware
-    if typeof(gethui) == "function" then
-        pcall(function()
-            gui.Parent = gethui()
-        end)
-        return true
-    end
-    
-    --// Method 7: Hydrogen
-    if typeof(hydrogen) == "table" and typeof(hydrogen.protect_gui) == "function" then
-        pcall(function()
-            hydrogen.protect_gui(gui)
-            gui.Parent = CoreGui
-        end})
-        return true
-    end
-    
-    --// Method 8: Codex
-    if typeof(codex) == "table" and typeof(codex.protect_gui) == "function" then
-        pcall(function()
-            codex.protect_gui(gui)
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 9: Oxygen U
-    if typeof(Oxygen) == "table" and typeof(Oxygen.protect_gui) == "function" then
-        pcall(function()
-            Oxygen.protect_gui(gui)
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 10: Trigon
-    if typeof(TRIGON_LOADED) == "boolean" and TRIGON_LOADED then
-        pcall(function()
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 11: Vega X
-    if typeof(vega) == "table" and typeof(vega.protect_gui) == "function" then
-        pcall(function()
-            vega.protect_gui(gui)
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 12: Evon
-    if typeof(evon) == "table" and typeof(evon.protect_gui) == "function" then
-        pcall(function()
-            evon.protect_gui(gui)
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Method 13: Arceus X
-    if typeof(arceus) == "table" and typeof(arceus.protect_gui) == "function" then
-        pcall(function()
-            arceus.protect_gui(gui)
-            gui.Parent = CoreGui
-        end)
-        return true
-    end
-    
-    --// Fallback: Parent ke PlayerGui (untuk executor tanpa proteksi)
-    pcall(function()
-        gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-    end)
-    
-    return false
+    return gui
 end
 
---// Apply protection
-protectGUI(shhhhnayy05.ScreenGui)
+--// Create GUI
+local shhhhnayy05 = {}
+shhhhnayy05.ScreenGui = createProtectedGUI()
 
 --// ============================================
 --// MAIN WINDOW - 350x450
@@ -206,17 +116,6 @@ shhhhnayy05.TitleText.Font = Enum.Font.GothamBold
 shhhhnayy05.TitleText.TextXAlignment = Enum.TextXAlignment.Left
 shhhhnayy05.TitleText.Parent = shhhhnayy05.TitleBar
 
---// Executor Label (NEW - Debug)
-shhhhnayy05.ExecutorLabel = Instance.new("TextLabel")
-shhhhnayy05.ExecutorLabel.Size = UDim2.new(0, 80, 0, 15)
-shhhhnayy05.ExecutorLabel.Position = UDim2.new(0.02, 0, 0.7, 0)
-shhhhnayy05.ExecutorLabel.BackgroundTransparency = 1
-shhhhnayy05.ExecutorLabel.Text = "💻 Delta"
-shhhhnayy05.ExecutorLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-shhhhnayy05.ExecutorLabel.TextSize = 8
-shhhhnayy05.ExecutorLabel.Font = Enum.Font.Gotham
-shhhhnayy05.ExecutorLabel.Parent = shhhhnayy05.TitleBar
-
 --// Open Category Button
 shhhhnayy05.OpenCategoryBtn = Instance.new("TextButton")
 shhhhnayy05.OpenCategoryBtn.Name = "shhhhnayy05_OpenCat"
@@ -235,16 +134,16 @@ OpenCatCorner.CornerRadius = UDim.new(0, 6)
 OpenCatCorner.Parent = shhhhnayy05.OpenCategoryBtn
 
 --// Minimize Button
-shhhhnayy05.MinimizeBtn = Instance.new("ImageButton")
+shhhhnayy05.MinimizeBtn = Instance.new("TextButton")
 shhhhnayy05.MinimizeBtn.Name = "shhhhnayy05_Minimize"
-shhhhnayy05.MinimizeBtn.Size = UDim2.new(0, 24, 0, 24)
-shhhhnayy05.MinimizeBtn.Position = UDim2.new(0.88, -28, 0.5, -12)
+shhhhnayy05.MinimizeBtn.Size = UDim2.new(0, 26, 0, 26)
+shhhhnayy05.MinimizeBtn.Position = UDim2.new(0.88, -28, 0.5, -13)
 shhhhnayy05.MinimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 70)
 shhhhnayy05.MinimizeBtn.BorderSizePixel = 0
-shhhhnayy05.MinimizeBtn.Image = "rbxassetid://3926307971"
-shhhhnayy05.MinimizeBtn.ImageRectOffset = Vector2.new(884, 284)
-shhhhnayy05.MinimizeBtn.ImageRectSize = Vector2.new(36, 36)
-shhhhnayy05.MinimizeBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.MinimizeBtn.Text = "−"
+shhhhnayy05.MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.MinimizeBtn.TextSize = 20
+shhhhnayy05.MinimizeBtn.Font = Enum.Font.GothamBold
 shhhhnayy05.MinimizeBtn.Parent = shhhhnayy05.TitleBar
 
 local MinCorner = Instance.new("UICorner")
@@ -252,16 +151,16 @@ MinCorner.CornerRadius = UDim.new(0, 5)
 MinCorner.Parent = shhhhnayy05.MinimizeBtn
 
 --// Close Button
-shhhhnayy05.CloseBtn = Instance.new("ImageButton")
+shhhhnayy05.CloseBtn = Instance.new("TextButton")
 shhhhnayy05.CloseBtn.Name = "shhhhnayy05_Close"
-shhhhnayy05.CloseBtn.Size = UDim2.new(0, 24, 0, 24)
-shhhhnayy05.CloseBtn.Position = UDim2.new(0.97, -26, 0.5, -12)
+shhhhnayy05.CloseBtn.Size = UDim2.new(0, 26, 0, 26)
+shhhhnayy05.CloseBtn.Position = UDim2.new(0.97, -28, 0.5, -13)
 shhhhnayy05.CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
 shhhhnayy05.CloseBtn.BorderSizePixel = 0
-shhhhnayy05.CloseBtn.Image = "rbxassetid://3926305904"
-shhhhnayy05.CloseBtn.ImageRectOffset = Vector2.new(924, 724)
-shhhhnayy05.CloseBtn.ImageRectSize = Vector2.new(36, 36)
-shhhhnayy05.CloseBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseBtn.Text = "×"
+shhhhnayy05.CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseBtn.TextSize = 20
+shhhhnayy05.CloseBtn.Font = Enum.Font.GothamBold
 shhhhnayy05.CloseBtn.Parent = shhhhnayy05.TitleBar
 
 local CloseCorner = Instance.new("UICorner")
@@ -383,17 +282,16 @@ local PrevImgCorner = Instance.new("UICorner")
 PrevImgCorner.CornerRadius = UDim.new(0, 8)
 PrevImgCorner.Parent = shhhhnayy05.PreviewImage
 
---// Loading Spinner
-shhhhnayy05.LoadingSpinner = Instance.new("ImageLabel")
-shhhhnayy05.LoadingSpinner.Size = UDim2.new(0, 30, 0, 30)
-shhhhnayy05.LoadingSpinner.Position = UDim2.new(0.5, -15, 0.5, -15)
-shhhhnayy05.LoadingSpinner.BackgroundTransparency = 1
-shhhhnayy05.LoadingSpinner.Image = "rbxassetid://3926305904"
-shhhhnayy05.LoadingSpinner.ImageRectOffset = Vector2.new(764, 244)
-shhhhnayy05.LoadingSpinner.ImageRectSize = Vector2.new(36, 36)
-shhhhnayy05.LoadingSpinner.ImageColor3 = Color3.fromRGB(0, 150, 255)
-shhhhnayy05.LoadingSpinner.Visible = false
-shhhhnayy05.LoadingSpinner.Parent = shhhhnayy05.PreviewImage
+--// Loading Text
+shhhhnayy05.LoadingText = Instance.new("TextLabel")
+shhhhnayy05.LoadingText.Size = UDim2.new(1, 0, 1, 0)
+shhhhnayy05.LoadingText.BackgroundTransparency = 1
+shhhhnayy05.LoadingText.Text = "⏳"
+shhhhnayy05.LoadingText.TextColor3 = Color3.fromRGB(0, 150, 255)
+shhhhnayy05.LoadingText.TextSize = 30
+shhhhnayy05.LoadingText.Font = Enum.Font.GothamBold
+shhhhnayy05.LoadingText.Visible = false
+shhhhnayy05.LoadingText.Parent = shhhhnayy05.PreviewImage
 
 --// Item Info Frame
 shhhhnayy05.ItemInfoFrame = Instance.new("Frame")
@@ -449,7 +347,7 @@ shhhhnayy05.AntiVisualLabel = Instance.new("TextLabel")
 shhhhnayy05.AntiVisualLabel.Size = UDim2.new(0.9, 0, 0, 12)
 shhhhnayy05.AntiVisualLabel.Position = UDim2.new(0.05, 0, 0, 52)
 shhhhnayy05.AntiVisualLabel.BackgroundTransparency = 1
-shhhhnayy05.AntiVisualLabel.Text = "👁️ Anti-Visual: ON (Terlihat orang lain)"
+shhhhnayy05.AntiVisualLabel.Text = "👁️ Anti-Visual: ON"
 shhhhnayy05.AntiVisualLabel.TextColor3 = Color3.fromRGB(100, 255, 150)
 shhhhnayy05.AntiVisualLabel.TextSize = 9
 shhhhnayy05.AntiVisualLabel.Font = Enum.Font.Gotham
@@ -570,7 +468,6 @@ CatWindowStroke.Thickness = 2
 CatWindowStroke.Transparency = 0.3
 CatWindowStroke.Parent = shhhhnayy05.CategoryWindow
 
---// Category Title Bar
 shhhhnayy05.CatTitleBar = Instance.new("Frame")
 shhhhnayy05.CatTitleBar.Size = UDim2.new(1, 0, 0, 35)
 shhhhnayy05.CatTitleBar.BackgroundColor3 = Color3.fromRGB(20, 20, 35)
@@ -592,22 +489,21 @@ shhhhnayy05.CatTitleText.Font = Enum.Font.GothamBold
 shhhhnayy05.CatTitleText.TextXAlignment = Enum.TextXAlignment.Left
 shhhhnayy05.CatTitleText.Parent = shhhhnayy05.CatTitleBar
 
-shhhhnayy05.CloseCatBtn = Instance.new("ImageButton")
+shhhhnayy05.CloseCatBtn = Instance.new("TextButton")
 shhhhnayy05.CloseCatBtn.Size = UDim2.new(0, 22, 0, 22)
 shhhhnayy05.CloseCatBtn.Position = UDim2.new(0.97, -26, 0.5, -11)
 shhhhnayy05.CloseCatBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
 shhhhnayy05.CloseCatBtn.BorderSizePixel = 0
-shhhhnayy05.CloseCatBtn.Image = "rbxassetid://3926305904"
-shhhhnayy05.CloseCatBtn.ImageRectOffset = Vector2.new(924, 724)
-shhhhnayy05.CloseCatBtn.ImageRectSize = Vector2.new(36, 36)
-shhhhnayy05.CloseCatBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseCatBtn.Text = "×"
+shhhhnayy05.CloseCatBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseCatBtn.TextSize = 16
+shhhhnayy05.CloseCatBtn.Font = Enum.Font.GothamBold
 shhhhnayy05.CloseCatBtn.Parent = shhhhnayy05.CatTitleBar
 
 local CloseCatCorner = Instance.new("UICorner")
 CloseCatCorner.CornerRadius = UDim.new(0, 5)
 CloseCatCorner.Parent = shhhhnayy05.CloseCatBtn
 
---// Category List
 shhhhnayy05.CatListFrame = Instance.new("ScrollingFrame")
 shhhhnayy05.CatListFrame.Size = UDim2.new(0.95, 0, 0.88, -35)
 shhhhnayy05.CatListFrame.Position = UDim2.new(0.025, 0, 0, 40)
@@ -750,15 +646,15 @@ shhhhnayy05.OriginalTitleText.Font = Enum.Font.GothamBold
 shhhhnayy05.OriginalTitleText.TextXAlignment = Enum.TextXAlignment.Left
 shhhhnayy05.OriginalTitleText.Parent = shhhhnayy05.OriginalTitleBar
 
-shhhhnayy05.CloseOriginalBtn = Instance.new("ImageButton")
+shhhhnayy05.CloseOriginalBtn = Instance.new("TextButton")
 shhhhnayy05.CloseOriginalBtn.Size = UDim2.new(0, 22, 0, 22)
 shhhhnayy05.CloseOriginalBtn.Position = UDim2.new(0.97, -26, 0.5, -11)
 shhhhnayy05.CloseOriginalBtn.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
 shhhhnayy05.CloseOriginalBtn.BorderSizePixel = 0
-shhhhnayy05.CloseOriginalBtn.Image = "rbxassetid://3926305904"
-shhhhnayy05.CloseOriginalBtn.ImageRectOffset = Vector2.new(924, 724)
-shhhhnayy05.CloseOriginalBtn.ImageRectSize = Vector2.new(36, 36)
-shhhhnayy05.CloseOriginalBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseOriginalBtn.Text = "×"
+shhhhnayy05.CloseOriginalBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.CloseOriginalBtn.TextSize = 16
+shhhhnayy05.CloseOriginalBtn.Font = Enum.Font.GothamBold
 shhhhnayy05.CloseOriginalBtn.Parent = shhhhnayy05.OriginalTitleBar
 
 local CloseOriginalCorner = Instance.new("UICorner")
@@ -781,44 +677,22 @@ OriginalListCorner.Parent = shhhhnayy05.OriginalListFrame
 --// ============================================
 --// MINIMIZED ICON
 --// ============================================
-shhhhnayy05.MinimizedIcon = Instance.new("ImageButton")
+shhhhnayy05.MinimizedIcon = Instance.new("TextButton")
 shhhhnayy05.MinimizedIcon.Name = "shhhhnayy05_MinIcon"
 shhhhnayy05.MinimizedIcon.Size = UDim2.new(0, 50, 0, 50)
 shhhhnayy05.MinimizedIcon.Position = UDim2.new(0.95, -60, 0.95, -60)
 shhhhnayy05.MinimizedIcon.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 shhhhnayy05.MinimizedIcon.BorderSizePixel = 0
-shhhhnayy05.MinimizedIcon.Image = "rbxassetid://3926305904"
-shhhhnayy05.MinimizedIcon.ImageRectOffset = Vector2.new(644, 204)
-shhhhnayy05.MinimizedIcon.ImageRectSize = Vector2.new(36, 36)
-shhhhnayy05.MinimizedIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.MinimizedIcon.Text = "🔥"
+shhhhnayy05.MinimizedIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+shhhhnayy05.MinimizedIcon.TextSize = 24
+shhhhnayy05.MinimizedIcon.Font = Enum.Font.GothamBold
 shhhhnayy05.MinimizedIcon.Visible = false
 shhhhnayy05.MinimizedIcon.Parent = shhhhnayy05.ScreenGui
 
 local IconCorner = Instance.new("UICorner")
 IconCorner.CornerRadius = UDim.new(1, 0)
 IconCorner.Parent = shhhhnayy05.MinimizedIcon
-
-local IconStroke = Instance.new("UIStroke")
-IconStroke.Color = Color3.fromRGB(100, 200, 255)
-IconStroke.Thickness = 3
-IconStroke.Parent = shhhhnayy05.MinimizedIcon
-
-shhhhnayy05.IconGlow = Instance.new("ImageLabel")
-shhhhnayy05.IconGlow.Size = UDim2.new(1.5, 0, 1.5, 0)
-shhhhnayy05.IconGlow.Position = UDim2.new(-0.25, 0, -0.25, 0)
-shhhhnayy05.IconGlow.BackgroundTransparency = 1
-shhhhnayy05.IconGlow.Image = "rbxassetid://10822646081"
-shhhhnayy05.IconGlow.ImageColor3 = Color3.fromRGB(0, 150, 255)
-shhhhnayy05.IconGlow.ImageTransparency = 0.6
-shhhhnayy05.IconGlow.Parent = shhhhnayy05.MinimizedIcon
-
-spawn(function()
-    while shhhhnayy05.ScreenGui and shhhhnayy05.ScreenGui.Parent do
-        local tween = TweenService:Create(shhhhnayy05.IconGlow, TweenInfo.new(4, Enum.EasingStyle.Linear), {Rotation = shhhhnayy05.IconGlow.Rotation + 360})
-        tween:Play()
-        tween.Completed:Wait()
-    end
-end)
 
 --// Data Storage
 shhhhnayy05.CurrentCategory = "All"
@@ -831,14 +705,7 @@ shhhhnayy05.OriginalClothes = {
     Hats = {},
     Hair = nil,
     Faces = nil,
-    Heads = nil,
-    HeadAccessories = {},
-    FaceAccessories = {},
-    Neck = {},
-    Shoulder = {},
-    Front = {},
-    Back = {},
-    Waist = {}
+    Heads = nil
 }
 shhhhnayy05.EquippedItems = {
     ClassicShirts = nil,
@@ -848,16 +715,8 @@ shhhhnayy05.EquippedItems = {
     Hair = nil,
     Faces = nil,
     Heads = nil,
-    HeadAccessories = {},
-    FaceAccessories = {},
-    Neck = {},
-    Shoulder = {},
-    Front = {},
-    Back = {},
-    Waist = {},
     Gear = {},
-    Animations = nil,
-    Bundles = nil
+    Animations = nil
 }
 
 --// ============================================
@@ -881,14 +740,7 @@ function shhhhnayy05:ScanOriginalClothes()
         Hats = {},
         Hair = nil,
         Faces = nil,
-        Heads = nil,
-        HeadAccessories = {},
-        FaceAccessories = {},
-        Neck = {},
-        Shoulder = {},
-        Front = {},
-        Back = {},
-        Waist = {}
+        Heads = nil
     }
     
     if desc.Shirt and desc.Shirt > 0 then
@@ -1162,7 +1014,7 @@ function shhhhnayy05:ViewItem(assetId)
         return
     end
     
-    self.LoadingSpinner.Visible = true
+    self.LoadingText.Visible = true
     self.PreviewImage.Image = ""
     self.ItemStatus.Text = "Status: Loading..."
     self.ItemStatus.TextColor3 = Color3.fromRGB(100, 200, 255)
@@ -1196,7 +1048,7 @@ function shhhhnayy05:ViewItem(assetId)
         self.CurrentItem = nil
     end
     
-    self.LoadingSpinner.Visible = false
+    self.LoadingText.Visible = false
 end
 
 function shhhhnayy05:CheckEquippedStatus()
@@ -1224,38 +1076,6 @@ function shhhhnayy05:CheckEquippedStatus()
         isEquipped = self.EquippedItems.Heads.id == id
     elseif category == "Hats" then
         for _, item in ipairs(self.EquippedItems.Hats) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "HeadAccessories" then
-        for _, item in ipairs(self.EquippedItems.HeadAccessories) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "FaceAccessories" then
-        for _, item in ipairs(self.EquippedItems.FaceAccessories) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "Neck" then
-        for _, item in ipairs(self.EquippedItems.Neck) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "Shoulder" then
-        for _, item in ipairs(self.EquippedItems.Shoulder) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "Front" then
-        for _, item in ipairs(self.EquippedItems.Front) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "Back" then
-        for _, item in ipairs(self.EquippedItems.Back) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "Waist" then
-        for _, item in ipairs(self.EquippedItems.Waist) do
-            if item.id == id then isEquipped = true break end
-        end
-    elseif category == "Gear" then
-        for _, item in ipairs(self.EquippedItems.Gear) do
             if item.id == id then isEquipped = true break end
         end
     elseif category == "Animations" and self.EquippedItems.Animations then
@@ -1333,41 +1153,6 @@ function shhhhnayy05:EquipItem()
             local current = desc:GetAccessories(true)
             table.insert(current, assetId)
             desc:SetAccessories(current, true)
-        elseif category == "HeadAccessories" then
-            table.insert(self.EquippedItems.HeadAccessories, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
-        elseif category == "FaceAccessories" then
-            table.insert(self.EquippedItems.FaceAccessories, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
-        elseif category == "Neck" then
-            table.insert(self.EquippedItems.Neck, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
-        elseif category == "Shoulder" then
-            table.insert(self.EquippedItems.Shoulder, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
-        elseif category == "Front" then
-            table.insert(self.EquippedItems.Front, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
-        elseif category == "Back" then
-            table.insert(self.EquippedItems.Back, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
-        elseif category == "Waist" then
-            table.insert(self.EquippedItems.Waist, self.CurrentItem)
-            local current = desc:GetAccessories(true)
-            table.insert(current, assetId)
-            desc:SetAccessories(current, true)
         elseif category == "Gear" then
             table.insert(self.EquippedItems.Gear, self.CurrentItem)
             spawn(function()
@@ -1381,8 +1166,6 @@ function shhhhnayy05:EquipItem()
         elseif category == "Animations" then
             desc.IdleAnimation = assetId
             self.EquippedItems.Animations = self.CurrentItem
-        elseif category == "Bundles" then
-            self.EquippedItems.Bundles = self.CurrentItem
         end
         
         humanoid:ApplyDescription(desc)
@@ -1452,74 +1235,14 @@ function shhhhnayy05:UnequipItem()
                     break
                 end
             end
-        elseif category == "HeadAccessories" then
-            for i, item in ipairs(self.EquippedItems.HeadAccessories) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.HeadAccessories, i)
-                    break
-                end
-            end
-        elseif category == "FaceAccessories" then
-            for i, item in ipairs(self.EquippedItems.FaceAccessories) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.FaceAccessories, i)
-                    break
-                end
-            end
-        elseif category == "Neck" then
-            for i, item in ipairs(self.EquippedItems.Neck) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.Neck, i)
-                    break
-                end
-            end
-        elseif category == "Shoulder" then
-            for i, item in ipairs(self.EquippedItems.Shoulder) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.Shoulder, i)
-                    break
-                end
-            end
-        elseif category == "Front" then
-            for i, item in ipairs(self.EquippedItems.Front) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.Front, i)
-                    break
-                end
-            end
-        elseif category == "Back" then
-            for i, item in ipairs(self.EquippedItems.Back) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.Back, i)
-                    break
-                end
-            end
-        elseif category == "Waist" then
-            for i, item in ipairs(self.EquippedItems.Waist) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.Waist, i)
-                    break
-                end
-            end
-        elseif category == "Gear" then
-            for i, item in ipairs(self.EquippedItems.Gear) do
-                if item.id == assetId then
-                    table.remove(self.EquippedItems.Gear, i)
-                    break
-                end
-            end
         elseif category == "Animations" then
             desc.IdleAnimation = 0
             self.EquippedItems.Animations = nil
-        elseif category == "Bundles" then
-            self.EquippedItems.Bundles = nil
         end
         
         local allAcc = {}
-        for _, cat in ipairs({"Hats", "HeadAccessories", "FaceAccessories", "Neck", "Shoulder", "Front", "Back", "Waist"}) do
-            for _, item in ipairs(self.EquippedItems[cat] or {}) do
-                table.insert(allAcc, item.id)
-            end
+        for _, item in ipairs(self.EquippedItems.Hats) do
+            table.insert(allAcc, item.id)
         end
         desc:SetAccessories(allAcc, true)
         
@@ -1546,16 +1269,8 @@ function shhhhnayy05:UpdateEquippedCount()
     if self.EquippedItems.Faces then count = count + 1 end
     if self.EquippedItems.Heads then count = count + 1 end
     if self.EquippedItems.Animations then count = count + 1 end
-    if self.EquippedItems.Bundles then count = count + 1 end
     
     count = count + #self.EquippedItems.Hats
-    count = count + #self.EquippedItems.HeadAccessories
-    count = count + #self.EquippedItems.FaceAccessories
-    count = count + #self.EquippedItems.Neck
-    count = count + #self.EquippedItems.Shoulder
-    count = count + #self.EquippedItems.Front
-    count = count + #self.EquippedItems.Back
-    count = count + #self.EquippedItems.Waist
     count = count + #self.EquippedItems.Gear
     
     self.EquippedText.Text = "🎽 Sedang Dipakai: " .. count .. " items"
@@ -1615,29 +1330,6 @@ function shhhhnayy05:EnableDragging(frame, handle)
 end
 
 function shhhhnayy05:Init()
-    --// Update executor label
-    local execName = "Unknown"
-    if typeof(Delta) == "table" then
-        execName = "Delta"
-    elseif typeof(syn) == "table" then
-        execName = "Synapse X"
-    elseif typeof(KRNL_LOADED) == "boolean" and KRNL_LOADED then
-        execName = "KRNL"
-    elseif typeof(fluxus) == "table" then
-        execName = "Fluxus"
-    elseif typeof(gethui) == "function" then
-        execName = "Script-Ware"
-    elseif typeof(hydrogen) == "table" then
-        execName = "Hydrogen"
-    elseif typeof(codex) == "table" then
-        execName = "Codex"
-    elseif typeof(TRIGON_LOADED) == "boolean" and TRIGON_LOADED then
-        execName = "Trigon"
-    else
-        execName = "Universal"
-    end
-    self.ExecutorLabel.Text = "💻 " .. execName
-    
     --// Dragging
     self:EnableDragging(self.MainFrame, self.TitleBar)
     self:EnableDragging(self.CategoryWindow, self.CatTitleBar)
@@ -1746,28 +1438,13 @@ function shhhhnayy05:Init()
         TweenService:Create(self.UnequipBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 70, 70)}):Play()
     end)
     
-    self.MinimizeBtn.MouseEnter:Connect(function()
-        TweenService:Create(self.MinimizeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(70, 70, 100)}):Play()
-    end)
-    self.MinimizeBtn.MouseLeave:Connect(function()
-        TweenService:Create(self.MinimizeBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(50, 50, 70)}):Play()
-    end)
-    
-    self.CloseBtn.MouseEnter:Connect(function()
-        TweenService:Create(self.CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 100, 100)}):Play()
-    end)
-    self.CloseBtn.MouseLeave:Connect(function()
-        TweenService:Create(self.CloseBtn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 70, 70)}):Play()
-    end)
-    
     --// Initial scan
     wait(1)
     self:ScanOriginalClothes()
     self:UpdateEquippedCount()
     
     print("✅ shhhhnayy05 Marketplace Loaded!")
-    print("💻 Executor: " .. execName)
-    print("👕 Original Clothes: Scanned")
+    print("💻 Delta Compatible Version")
 end
 
 --// Character Added
