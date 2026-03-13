@@ -1,5 +1,5 @@
 --// TERRAIN BY shhhhnayy05 
---// Terrain Editor v15.1 - Mobile Support + Fixed Layout
+--// Terrain Editor v15.4 - Fixed Power Button + Brush Functionality
 --// PASTE KE EXECUTOR
 
 local Players = game:GetService("Players")
@@ -110,6 +110,7 @@ local BrushSmoothRadius = 8
 local BrushSmoothIntensity = 0.5
 local LastBrushPosition = nil
 local BrushDebounce = false
+local BrushActive = false -- Track if mouse is held down
 
 --// Raycast
 local function GetRaycast()
@@ -117,13 +118,14 @@ local function GetRaycast()
     local ray = Camera:ViewportPointToRay(center.X, center.Y)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Blacklist
-    if PreviewPart then params.FilterDescendantsInstances = {PreviewPart} end
-    if BrushSmoothPreview then 
-        local filter = {PreviewPart, BrushSmoothPreview}
-        for _, part in ipairs(BrushSmoothParts) do
-            table.insert(filter, part)
-        end
-        params.FilterDescendantsInstances = filter
+    local filterList = {}
+    if PreviewPart then table.insert(filterList, PreviewPart) end
+    if BrushSmoothPreview then table.insert(filterList, BrushSmoothPreview) end
+    for _, part in ipairs(BrushSmoothParts) do
+        table.insert(filterList, part)
+    end
+    if #filterList > 0 then
+        params.FilterDescendantsInstances = filterList
     end
     return Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
 end
@@ -144,12 +146,14 @@ end
 
 --// Create Brush Smooth Preview
 local function CreateBrushSmoothPreview()
+    -- Clear old preview
     if BrushSmoothPreview then BrushSmoothPreview:Destroy() end
     for _, part in ipairs(BrushSmoothParts) do
         part:Destroy()
     end
     BrushSmoothParts = {}
     
+    -- Create main cylinder preview
     BrushSmoothPreview = Instance.new("Part")
     BrushSmoothPreview.Shape = Enum.PartType.Cylinder
     BrushSmoothPreview.Material = Enum.Material.Neon
@@ -162,6 +166,7 @@ local function CreateBrushSmoothPreview()
     BrushSmoothPreview.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90))
     BrushSmoothPreview.Parent = Workspace
     
+    -- Create particle effects around brush
     for i = 1, 8 do
         local part = Instance.new("Part")
         part.Shape = Enum.PartType.Ball
@@ -179,8 +184,9 @@ end
 
 --// Update Brush Smooth Preview
 local function UpdateBrushSmoothPreview(position, normal)
-    if not BrushSmoothPreview then return end
+    if not BrushSmoothPreview or not position then return end
     
+    -- Calculate orientation based on surface normal
     local lookVector = normal
     local rightVector = Vector3.new(1, 0, 0)
     if math.abs(normal.X) > 0.9 then
@@ -189,9 +195,11 @@ local function UpdateBrushSmoothPreview(position, normal)
     local upVector = lookVector:Cross(rightVector).Unit
     rightVector = upVector:Cross(lookVector).Unit
     
+    -- Position and orient the cylinder
     BrushSmoothPreview.CFrame = CFrame.fromMatrix(position, rightVector, upVector)
     BrushSmoothPreview.Size = Vector3.new(0.3, BrushSmoothRadius * 2, BrushSmoothRadius * 2)
     
+    -- Animate particles
     for i, part in ipairs(BrushSmoothParts) do
         local angle = (i / 8) * math.pi * 2 + (tick() * 2)
         local offset = Vector3.new(
@@ -201,65 +209,86 @@ local function UpdateBrushSmoothPreview(position, normal)
         )
         local rotatedOffset = rightVector * offset.X + upVector * offset.Y + lookVector * 0.5
         part.Position = position + rotatedOffset
-        part.Size = Vector3.new(1 + math.sin(tick() * 3 + i) * 0.3, 1 + math.sin(tick() * 3 + i) * 0.3, 1 + math.sin(tick() * 3 + i) * 0.3)
+        local pulse = 1 + math.sin(tick() * 3 + i) * 0.3
+        part.Size = Vector3.new(pulse, pulse, pulse)
     end
 end
 
---// Apply Smooth Brush Effect
+--// Apply Smooth Brush Effect - FIXED VERSION
 local function ApplyBrushSmooth(position, normal)
     if BrushDebounce then return end
     BrushDebounce = true
     
     local resolution = 4
-    for x = -BrushSmoothRadius, BrushSmoothRadius, resolution do
-        for y = -BrushSmoothRadius, BrushSmoothRadius, resolution do
-            for z = -BrushSmoothRadius, BrushSmoothRadius, resolution do
-                local checkPos = position + Vector3.new(x, y, z)
-                local dist = (Vector3.new(x, y, z)).Magnitude
-                
-                if dist <= BrushSmoothRadius then
-                    local material, occupancy = Terrain:ReadVoxels(
-                        Region3.new(checkPos - Vector3.new(2, 2, 2), checkPos + Vector3.new(2, 2, 2)),
-                        resolution
-                    )
+    local success, err = pcall(function()
+        -- Create a region around the brush position
+        for x = -BrushSmoothRadius, BrushSmoothRadius, resolution do
+            for y = -BrushSmoothRadius, BrushSmoothRadius, resolution do
+                for z = -BrushSmoothRadius, BrushSmoothRadius, resolution do
+                    local offset = Vector3.new(x, y, z)
+                    local dist = offset.Magnitude
                     
-                    if material and material[1][1][1] ~= Enum.Material.Air then
-                        local smoothFactor = 1 - (dist / BrushSmoothRadius)
-                        smoothFactor = smoothFactor * BrushSmoothIntensity
-                        local targetOccupancy = math.max(0, occupancy[1][1][1] - smoothFactor * 0.3)
+                    if dist <= BrushSmoothRadius then
+                        local checkPos = position + offset
+                        local region = Region3.new(checkPos - Vector3.new(2, 2, 2), checkPos + Vector3.new(2, 2, 2))
                         
-                        if targetOccupancy > 0 then
-                            Terrain:FillBall(checkPos, resolution * 0.8, material[1][1][1])
-                        else
-                            Terrain:FillBall(checkPos, resolution * 0.5, Enum.Material.Air)
+                        -- Safely read voxels
+                        local matSuccess, material, occupancy = pcall(function()
+                            return Terrain:ReadVoxels(region, resolution)
+                        end)
+                        
+                        if matSuccess and material and occupancy then
+                            -- Check if there's terrain here (not air)
+                            local hasTerrain = false
+                            local currentMat = Enum.Material.Air
+                            local currentOcc = 0
+                            
+                            -- Safely access the voxel data
+                            if typeof(material) == "table" and #material > 0 then
+                                if typeof(material[1]) == "table" and #material[1] > 0 then
+                                    if typeof(material[1][1]) == "table" and #material[1][1] > 0 then
+                                        currentMat = material[1][1][1]
+                                        currentOcc = occupancy[1][1][1]
+                                        if currentMat and currentMat ~= Enum.Material.Air then
+                                            hasTerrain = true
+                                        end
+                                    end
+                                end
+                            end
+                            
+                            if hasTerrain then
+                                -- Calculate smooth factor based on distance from center
+                                local smoothFactor = 1 - (dist / BrushSmoothRadius)
+                                smoothFactor = smoothFactor * BrushSmoothIntensity
+                                
+                                -- Modify terrain based on intensity
+                                local targetOccupancy = math.max(0, currentOcc - smoothFactor * 0.3)
+                                
+                                if targetOccupancy > 0.1 then
+                                    -- Fill with current material
+                                    Terrain:FillBall(checkPos, resolution * 0.8, currentMat)
+                                else
+                                    -- Carve/air
+                                    Terrain:FillBall(checkPos, resolution * 0.5, Enum.Material.Air)
+                                end
+                            end
                         end
                     end
                 end
             end
         end
-    end
+    end)
     
-    local data = {
-        math.floor(position.X),
-        math.floor(position.Y),
-        math.floor(position.Z),
-        BrushSmoothRadius, 0, 0,
-        "SmoothBrush",
-        "Sphere",
-        currentGrassColorIndex,
-        currentLeafyGrassColorIndex,
-        currentGroundColorIndex,
-        BrushSmoothIntensity
-    }
-    table.insert(UndoHistory, data)
-    table.insert(SpawnedData, data)
+    if not success then
+        warn("Brush Smooth Error: " .. tostring(err))
+    end
     
     delay(0.05, function()
         BrushDebounce = false
     end)
 end
 
---// Update Preview
+--// Update Preview Loop
 local function UpdatePreview()
     if not PreviewPart then CreatePreview() end
     
@@ -268,20 +297,27 @@ local function UpdatePreview()
         PreviewPos = result.Position
         
         if BrushSmoothEnabled then
+            -- Hide normal preview, show brush preview
             PreviewPart.Transparency = 1
             if not BrushSmoothPreview then CreateBrushSmoothPreview() end
             UpdateBrushSmoothPreview(result.Position, result.Normal)
             
-            if LastBrushPosition then
-                local dist = (result.Position - LastBrushPosition).Magnitude
-                if dist > BrushSmoothRadius * 0.3 then
-                    ApplyBrushSmooth(result.Position, result.Normal)
+            -- Apply brush effect if mouse is held down
+            if BrushActive then
+                if LastBrushPosition then
+                    local dist = (result.Position - LastBrushPosition).Magnitude
+                    if dist > BrushSmoothRadius * 0.2 then
+                        ApplyBrushSmooth(result.Position, result.Normal)
+                        LastBrushPosition = result.Position
+                    end
+                else
                     LastBrushPosition = result.Position
                 end
             else
                 LastBrushPosition = result.Position
             end
         else
+            -- Normal mode
             PreviewPart.Transparency = 0.65
             if BrushSmoothPreview then
                 BrushSmoothPreview.Transparency = 1
@@ -301,6 +337,7 @@ local function UpdatePreview()
             LastBrushPosition = nil
         end
     else
+        -- No raycast hit
         PreviewPart.Transparency = 0.7
         if BrushSmoothPreview then
             BrushSmoothPreview.Transparency = 1
@@ -325,7 +362,7 @@ local function ApplyMaterialColors()
     end)
 end
 
---// BL Function
+--// BL Function (Build Terrain)
 local function BL(d)
     local pos = Vector3.new(d[1], d[2], d[3])
     local sx, sy, sz = d[4], d[5], d[6]
@@ -493,7 +530,7 @@ local function GenerateScript()
     return code
 end
 
---// GUI
+--// GUI CREATION
 local gui = Instance.new("ScreenGui")
 gui.Name = "shhhhnayy05TerrainEditor"
 gui.ResetOnSpawn = false
@@ -514,7 +551,7 @@ dot.BorderSizePixel = 0
 dot.Parent = ch
 Instance.new("UICorner").Parent = dot
 
---// Mobile Spawn Button (Bigger for touch)
+--// Mobile Spawn Button
 local spawnBtn = Instance.new("TextButton")
 spawnBtn.Name = "SpawnBtn"
 spawnBtn.Size = IsMobile and UDim2.new(0, 70, 0, 70) or UDim2.new(0, 50, 0, 50)
@@ -548,7 +585,7 @@ local minIconStroke = Instance.new("UIStroke", minIcon)
 minIconStroke.Color = Color3.fromRGB(255, 255, 255)
 minIconStroke.Thickness = 2
 
---// MAIN PANEL - Fixed Size & Position
+--// MAIN PANEL
 local panel = Instance.new("Frame")
 panel.Name = "MainPanel"
 panel.Size = UDim2.new(0, 280, 0, 400)
@@ -633,7 +670,7 @@ status.Parent = scroll
 
 --// BRUSH SMOOTH SECTION - FIXED LAYOUT
 local brushSec = Instance.new("Frame")
-brushSec.Size = UDim2.new(1, -8, 0, 95)
+brushSec.Size = UDim2.new(1, -8, 0, 110) -- Increased height
 brushSec.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
 brushSec.BorderSizePixel = 0
 brushSec.Parent = scroll
@@ -649,7 +686,7 @@ brushTitle.TextSize = 12
 brushTitle.Font = Enum.Font.GothamBold
 brushTitle.Parent = brushSec
 
---// Toggle Button (Centered, Bigger)
+--// Toggle Button
 local brushToggle = Instance.new("TextButton")
 brushToggle.Size = UDim2.new(0, 100, 0, 32)
 brushToggle.Position = UDim2.new(0.5, -50, 0, 24)
@@ -665,90 +702,96 @@ local brushToggleStroke = Instance.new("UIStroke", brushToggle)
 brushToggleStroke.Color = Color3.fromRGB(255, 255, 255)
 brushToggleStroke.Thickness = 2
 
---// Controls Container
-local brushControls = Instance.new("Frame")
-brushControls.Size = UDim2.new(1, -10, 0, 32)
-brushControls.Position = UDim2.new(0, 5, 0, 60)
-brushControls.BackgroundTransparency = 1
-brushControls.Parent = brushSec
-
---// Radius Row
+--// Radius Controls (Left Side)
 local radiusLabel = Instance.new("TextLabel")
-radiusLabel.Size = UDim2.new(0, 45, 1, 0)
+radiusLabel.Size = UDim2.new(0, 45, 0, 20)
+radiusLabel.Position = UDim2.new(0, 5, 0, 60)
 radiusLabel.BackgroundTransparency = 1
 radiusLabel.Text = "Radius:"
 radiusLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
 radiusLabel.TextSize = 10
 radiusLabel.Font = Enum.Font.GothamBold
 radiusLabel.TextXAlignment = Enum.TextXAlignment.Left
-radiusLabel.Parent = brushControls
+radiusLabel.Parent = brushSec
 
 local radiusMinus = Instance.new("TextButton")
 radiusMinus.Size = UDim2.new(0, 28, 0, 24)
-radiusMinus.Position = UDim2.new(0, 45, 0.5, -12)
+radiusMinus.Position = UDim2.new(0, 50, 0, 58)
 radiusMinus.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 radiusMinus.Text = "-"
 radiusMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
 radiusMinus.TextSize = 14
 radiusMinus.Font = Enum.Font.GothamBold
-radiusMinus.Parent = brushControls
+radiusMinus.Parent = brushSec
 Instance.new("UICorner", radiusMinus).CornerRadius = UDim.new(0, 4)
 
 local radiusValue = Instance.new("TextLabel")
 radiusValue.Size = UDim2.new(0, 35, 0, 24)
-radiusValue.Position = UDim2.new(0, 75, 0.5, -12)
+radiusValue.Position = UDim2.new(0, 80, 0, 58)
 radiusValue.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
 radiusValue.Text = tostring(BrushSmoothRadius)
 radiusValue.TextColor3 = Color3.fromRGB(255, 255, 255)
 radiusValue.TextSize = 11
 radiusValue.Font = Enum.Font.GothamBold
-radiusValue.Parent = brushControls
+radiusValue.Parent = brushSec
 Instance.new("UICorner", radiusValue).CornerRadius = UDim.new(0, 4)
 
 local radiusPlus = Instance.new("TextButton")
 radiusPlus.Size = UDim2.new(0, 28, 0, 24)
-radiusPlus.Position = UDim2.new(0, 112, 0.5, -12)
+radiusPlus.Position = UDim2.new(0, 117, 0, 58)
 radiusPlus.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
 radiusPlus.Text = "+"
 radiusPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
 radiusPlus.TextSize = 14
 radiusPlus.Font = Enum.Font.GothamBold
-radiusPlus.Parent = brushControls
+radiusPlus.Parent = brushSec
 Instance.new("UICorner", radiusPlus).CornerRadius = UDim.new(0, 4)
 
---// Power Row (Right Side)
+--// Power Controls (Right Side) - FIXED: Added missing + button
 local powerLabel = Instance.new("TextLabel")
-powerLabel.Size = UDim2.new(0, 40, 1, 0)
-powerLabel.Position = UDim2.new(0, 150, 0, 0)
+powerLabel.Size = UDim2.new(0, 40, 0, 20)
+powerLabel.Position = UDim2.new(0, 155, 0, 60)
 powerLabel.BackgroundTransparency = 1
 powerLabel.Text = "Power:"
 powerLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
 powerLabel.TextSize = 10
 powerLabel.Font = Enum.Font.GothamBold
 powerLabel.TextXAlignment = Enum.TextXAlignment.Left
-powerLabel.Parent = brushControls
+powerLabel.Parent = brushSec
 
 local powerMinus = Instance.new("TextButton")
 powerMinus.Size = UDim2.new(0, 28, 0, 24)
-powerMinus.Position = UDim2.new(0, 190, 0.5, -12)
+powerMinus.Position = UDim2.new(0, 195, 0, 58)
 powerMinus.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 powerMinus.Text = "-"
 powerMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
 powerMinus.TextSize = 14
 powerMinus.Font = Enum.Font.GothamBold
-powerMinus.Parent = brushControls
+powerMinus.Parent = brushSec
 Instance.new("UICorner", powerMinus).CornerRadius = UDim.new(0, 4)
 
 local powerValue = Instance.new("TextLabel")
 powerValue.Size = UDim2.new(0, 35, 0, 24)
-powerValue.Position = UDim2.new(0, 220, 0.5, -12)
+powerValue.Position = UDim2.new(0, 225, 0, 58)
 powerValue.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
 powerValue.Text = "50%"
 powerValue.TextColor3 = Color3.fromRGB(255, 255, 255)
 powerValue.TextSize = 10
 powerValue.Font = Enum.Font.GothamBold
-powerValue.Parent = brushControls
+powerValue.Parent = brushSec
 Instance.new("UICorner", powerValue).CornerRadius = UDim.new(0, 4)
+
+--// FIXED: Added Power Plus button that was missing!
+local powerPlus = Instance.new("TextButton")
+powerPlus.Size = UDim2.new(0, 28, 0, 24)
+powerPlus.Position = UDim2.new(0, 262, 0, 58)
+powerPlus.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
+powerPlus.Text = "+"
+powerPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
+powerPlus.TextSize = 14
+powerPlus.Font = Enum.Font.GothamBold
+powerPlus.Parent = brushSec
+Instance.new("UICorner", powerPlus).CornerRadius = UDim.new(0, 4)
 
 --// GRASS COLOR SECTION
 local grassSec = Instance.new("Frame")
@@ -1217,8 +1260,10 @@ matScroll.CanvasSize = UDim2.new(0, #Materials * 55, 0, 0)
 matScroll.ScrollingDirection = Enum.ScrollingDirection.X
 matScroll.Parent = matSec
 
+--// Create Material Buttons
 for i, m in ipairs(Materials) do
     local btn = Instance.new("TextButton")
+    btn.Name = "MatBtn_" .. m.Name
     btn.Size = UDim2.new(0, 45, 0, 38)
     btn.Position = UDim2.new(0, 5 + (i-1) * 50, 0, 0)
     btn.BackgroundColor3 = m.Color
@@ -1229,15 +1274,12 @@ for i, m in ipairs(Materials) do
     btn.TextStrokeTransparency = 0.5
     btn.Parent = matScroll
     
-    -- Mobile touch support
-    btn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            CurrentMaterial = m
-            status.Text = "Material: " .. m.Name
-            TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0, 43, 0, 36)}):Play()
-            wait(0.1)
-            TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0, 45, 0, 38)}):Play()
-        end
+    btn.MouseButton1Click:Connect(function()
+        CurrentMaterial = m
+        status.Text = "Material: " .. m.Name
+        TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0, 43, 0, 36)}):Play()
+        wait(0.1)
+        TweenService:Create(btn, TweenInfo.new(0.1), {Size = UDim2.new(0, 45, 0, 38)}):Play()
     end)
 end
 
@@ -1342,212 +1384,177 @@ codeText.AutomaticSize = Enum.AutomaticSize.Y
 codeText.TextWrapped = true
 codeText.Parent = codeScroll
 
---// MOBILE TOUCH SUPPORT FUNCTION
-local function MakeTouchable(button, callback)
-    button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            callback()
-            -- Visual feedback
-            TweenService:Create(button, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-            wait(0.1)
-            TweenService:Create(button, TweenInfo.new(0.1), {BackgroundColor3 = button.BackgroundColor3}):Play()
-        end
+--// SAFE CONNECTION FUNCTION
+local function SafeConnect(button, callback)
+    if not button then
+        warn("Button is nil, cannot connect")
+        return
+    end
+    
+    local success, err = pcall(function()
+        button.MouseButton1Click:Connect(callback)
     end)
+    
+    if not success then
+        warn("Failed to connect button " .. button.Name .. ": " .. tostring(err))
+    end
 end
 
 --// EVENT CONNECTIONS
 
 -- Brush Smooth Toggle
-brushToggle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        BrushSmoothEnabled = not BrushSmoothEnabled
-        
-        if BrushSmoothEnabled then
-            brushToggle.Text = "ON"
-            brushToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-            status.Text = "🖌️ Brush Smooth: ON"
-            status.TextColor3 = Color3.fromRGB(0, 255, 150)
-            CreateBrushSmoothPreview()
-            spawnBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-            spawnBtn.Text = "🚫"
-        else
-            brushToggle.Text = "OFF"
-            brushToggle.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-            status.Text = "🖌️ Brush Smooth: OFF"
-            status.TextColor3 = Color3.fromRGB(0, 200, 255)
-            if BrushSmoothPreview then
-                BrushSmoothPreview:Destroy()
-                BrushSmoothPreview = nil
-            end
-            for _, part in ipairs(BrushSmoothParts) do part:Destroy() end
-            BrushSmoothParts = {}
-            spawnBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-            spawnBtn.Text = "🎯"
+SafeConnect(brushToggle, function()
+    BrushSmoothEnabled = not BrushSmoothEnabled
+    
+    if BrushSmoothEnabled then
+        brushToggle.Text = "ON"
+        brushToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        status.Text = "🖌️ Brush Smooth: ON (Hold click to paint)"
+        status.TextColor3 = Color3.fromRGB(0, 255, 150)
+        CreateBrushSmoothPreview()
+        spawnBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+        spawnBtn.Text = "🚫"
+    else
+        brushToggle.Text = "OFF"
+        brushToggle.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+        status.Text = "🖌️ Brush Smooth: OFF"
+        status.TextColor3 = Color3.fromRGB(0, 200, 255)
+        if BrushSmoothPreview then
+            BrushSmoothPreview:Destroy()
+            BrushSmoothPreview = nil
         end
+        for _, part in ipairs(BrushSmoothParts) do part:Destroy() end
+        BrushSmoothParts = {}
+        spawnBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        spawnBtn.Text = "🎯"
     end
 end)
 
 -- Brush Radius Control
-radiusMinus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        BrushSmoothRadius = math.max(4, BrushSmoothRadius - 2)
-        radiusValue.Text = tostring(BrushSmoothRadius)
-        if BrushSmoothEnabled then CreateBrushSmoothPreview() end
-    end
+SafeConnect(radiusMinus, function()
+    BrushSmoothRadius = math.max(4, BrushSmoothRadius - 2)
+    radiusValue.Text = tostring(BrushSmoothRadius)
+    if BrushSmoothEnabled then CreateBrushSmoothPreview() end
 end)
 
-radiusPlus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        BrushSmoothRadius = math.min(20, BrushSmoothRadius + 2)
-        radiusValue.Text = tostring(BrushSmoothRadius)
-        if BrushSmoothEnabled then CreateBrushSmoothPreview() end
-    end
+SafeConnect(radiusPlus, function()
+    BrushSmoothRadius = math.min(20, BrushSmoothRadius + 2)
+    radiusValue.Text = tostring(BrushSmoothRadius)
+    if BrushSmoothEnabled then CreateBrushSmoothPreview() end
 end)
 
--- Power Control
-powerMinus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        BrushSmoothIntensity = math.max(0.1, BrushSmoothIntensity - 0.1)
-        powerValue.Text = math.floor(BrushSmoothIntensity * 100) .. "%"
-    end
+-- Power Control - FIXED: Now both buttons work
+SafeConnect(powerMinus, function()
+    BrushSmoothIntensity = math.max(0.1, BrushSmoothIntensity - 0.1)
+    powerValue.Text = math.floor(BrushSmoothIntensity * 100) .. "%"
 end)
 
-powerPlus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        BrushSmoothIntensity = math.min(1.0, BrushSmoothIntensity + 0.1)
-        powerValue.Text = math.floor(BrushSmoothIntensity * 100) .. "%"
-    end
+SafeConnect(powerPlus, function()
+    BrushSmoothIntensity = math.min(1.0, BrushSmoothIntensity + 0.1)
+    powerValue.Text = math.floor(BrushSmoothIntensity * 100) .. "%"
 end)
 
 -- Grass Color
-grassLeft.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentGrassColorIndex = currentGrassColorIndex - 1
-        if currentGrassColorIndex < 1 then currentGrassColorIndex = #grassColors end
-        grassDisplay.Text = grassColors[currentGrassColorIndex].name
-        grassDisplay.BackgroundColor3 = grassColors[currentGrassColorIndex].color
-        ApplyMaterialColors()
-    end
+SafeConnect(grassLeft, function()
+    currentGrassColorIndex = currentGrassColorIndex - 1
+    if currentGrassColorIndex < 1 then currentGrassColorIndex = #grassColors end
+    grassDisplay.Text = grassColors[currentGrassColorIndex].name
+    grassDisplay.BackgroundColor3 = grassColors[currentGrassColorIndex].color
+    ApplyMaterialColors()
 end)
 
-grassRight.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentGrassColorIndex = currentGrassColorIndex + 1
-        if currentGrassColorIndex > #grassColors then currentGrassColorIndex = 1 end
-        grassDisplay.Text = grassColors[currentGrassColorIndex].name
-        grassDisplay.BackgroundColor3 = grassColors[currentGrassColorIndex].color
-        ApplyMaterialColors()
-    end
+SafeConnect(grassRight, function()
+    currentGrassColorIndex = currentGrassColorIndex + 1
+    if currentGrassColorIndex > #grassColors then currentGrassColorIndex = 1 end
+    grassDisplay.Text = grassColors[currentGrassColorIndex].name
+    grassDisplay.BackgroundColor3 = grassColors[currentGrassColorIndex].color
+    ApplyMaterialColors()
 end)
 
 -- LeafyGrass Color
-leafyLeft.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentLeafyGrassColorIndex = currentLeafyGrassColorIndex - 1
-        if currentLeafyGrassColorIndex < 1 then currentLeafyGrassColorIndex = #leafyGrassColors end
-        leafyDisplay.Text = leafyGrassColors[currentLeafyGrassColorIndex].name
-        leafyDisplay.BackgroundColor3 = leafyGrassColors[currentLeafyGrassColorIndex].color
-        ApplyMaterialColors()
-    end
+SafeConnect(leafyLeft, function()
+    currentLeafyGrassColorIndex = currentLeafyGrassColorIndex - 1
+    if currentLeafyGrassColorIndex < 1 then currentLeafyGrassColorIndex = #leafyGrassColors end
+    leafyDisplay.Text = leafyGrassColors[currentLeafyGrassColorIndex].name
+    leafyDisplay.BackgroundColor3 = leafyGrassColors[currentLeafyGrassColorIndex].color
+    ApplyMaterialColors()
 end)
 
-leafyRight.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentLeafyGrassColorIndex = currentLeafyGrassColorIndex + 1
-        if currentLeafyGrassColorIndex > #leafyGrassColors then currentLeafyGrassColorIndex = 1 end
-        leafyDisplay.Text = leafyGrassColors[currentLeafyGrassColorIndex].name
-        leafyDisplay.BackgroundColor3 = leafyGrassColors[currentLeafyGrassColorIndex].color
-        ApplyMaterialColors()
-    end
+SafeConnect(leafyRight, function()
+    currentLeafyGrassColorIndex = currentLeafyGrassColorIndex + 1
+    if currentLeafyGrassColorIndex > #leafyGrassColors then currentLeafyGrassColorIndex = 1 end
+    leafyDisplay.Text = leafyGrassColors[currentLeafyGrassColorIndex].name
+    leafyDisplay.BackgroundColor3 = leafyGrassColors[currentLeafyGrassColorIndex].color
+    ApplyMaterialColors()
 end)
 
 -- Ground Color
-groundLeft.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentGroundColorIndex = currentGroundColorIndex - 1
-        if currentGroundColorIndex < 1 then currentGroundColorIndex = #groundColors end
-        groundDisplay.Text = groundColors[currentGroundColorIndex].name
-        groundDisplay.BackgroundColor3 = groundColors[currentGroundColorIndex].color
-        ApplyMaterialColors()
-    end
+SafeConnect(groundLeft, function()
+    currentGroundColorIndex = currentGroundColorIndex - 1
+    if currentGroundColorIndex < 1 then currentGroundColorIndex = #groundColors end
+    groundDisplay.Text = groundColors[currentGroundColorIndex].name
+    groundDisplay.BackgroundColor3 = groundColors[currentGroundColorIndex].color
+    ApplyMaterialColors()
 end)
 
-groundRight.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        currentGroundColorIndex = currentGroundColorIndex + 1
-        if currentGroundColorIndex > #groundColors then currentGroundColorIndex = 1 end
-        groundDisplay.Text = groundColors[currentGroundColorIndex].name
-        groundDisplay.BackgroundColor3 = groundColors[currentGroundColorIndex].color
-        ApplyMaterialColors()
-    end
+SafeConnect(groundRight, function()
+    currentGroundColorIndex = currentGroundColorIndex + 1
+    if currentGroundColorIndex > #groundColors then currentGroundColorIndex = 1 end
+    groundDisplay.Text = groundColors[currentGroundColorIndex].name
+    groundDisplay.BackgroundColor3 = groundColors[currentGroundColorIndex].color
+    ApplyMaterialColors()
 end)
 
 -- Shape
-ballBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        CurrentShape = "Ball"
-        ballBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-        blockBtn.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
-        CreatePreview()
-    end
+SafeConnect(ballBtn, function()
+    CurrentShape = "Ball"
+    ballBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    blockBtn.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
+    CreatePreview()
 end)
 
-blockBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        CurrentShape = "Block"
-        ballBtn.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
-        blockBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-        CreatePreview()
-    end
+SafeConnect(blockBtn, function()
+    CurrentShape = "Block"
+    ballBtn.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
+    blockBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    CreatePreview()
 end)
 
 -- Size Controls
-xMinus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        SizeX = math.max(1, SizeX - 1)
-        xValue.Text = tostring(SizeX)
-        UpdatePreview()
-    end
+SafeConnect(xMinus, function()
+    SizeX = math.max(1, SizeX - 1)
+    xValue.Text = tostring(SizeX)
+    UpdatePreview()
 end)
 
-xPlus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        SizeX = math.min(50, SizeX + 1)
-        xValue.Text = tostring(SizeX)
-        UpdatePreview()
-    end
+SafeConnect(xPlus, function()
+    SizeX = math.min(50, SizeX + 1)
+    xValue.Text = tostring(SizeX)
+    UpdatePreview()
 end)
 
-yMinus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        SizeY = math.max(1, SizeY - 1)
-        yValue.Text = tostring(SizeY)
-        UpdatePreview()
-    end
+SafeConnect(yMinus, function()
+    SizeY = math.max(1, SizeY - 1)
+    yValue.Text = tostring(SizeY)
+    UpdatePreview()
 end)
 
-yPlus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        SizeY = math.min(50, SizeY + 1)
-        yValue.Text = tostring(SizeY)
-        UpdatePreview()
-    end
+SafeConnect(yPlus, function()
+    SizeY = math.min(50, SizeY + 1)
+    yValue.Text = tostring(SizeY)
+    UpdatePreview()
 end)
 
-zMinus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        SizeZ = math.max(1, SizeZ - 1)
-        zValue.Text = tostring(SizeZ)
-        UpdatePreview()
-    end
+SafeConnect(zMinus, function()
+    SizeZ = math.max(1, SizeZ - 1)
+    zValue.Text = tostring(SizeZ)
+    UpdatePreview()
 end)
 
-zPlus.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        SizeZ = math.min(50, SizeZ + 1)
-        zValue.Text = tostring(SizeZ)
-        UpdatePreview()
-    end
+SafeConnect(zPlus, function()
+    SizeZ = math.min(50, SizeZ + 1)
+    zValue.Text = tostring(SizeZ)
+    UpdatePreview()
 end)
 
 -- Presets
@@ -1559,121 +1566,118 @@ local function setPreset(size)
     UpdatePreview()
 end
 
-preset5.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then setPreset(5) end end)
-preset10.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then setPreset(10) end end)
-preset20.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then setPreset(20) end end)
-preset30.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then setPreset(30) end end)
-preset40.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then setPreset(40) end end)
-preset50.InputBegan:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then setPreset(50) end end)
+SafeConnect(preset5, function() setPreset(5) end)
+SafeConnect(preset10, function() setPreset(10) end)
+SafeConnect(preset20, function() setPreset(20) end)
+SafeConnect(preset30, function() setPreset(30) end)
+SafeConnect(preset40, function() setPreset(40) end)
+SafeConnect(preset50, function() setPreset(50) end)
 
 -- Undo/Redo
-undoBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local success, msg = Undo()
-        status.Text = success and ("↩️ " .. msg .. " (" .. #SpawnedData .. ")") or ("↩️ " .. msg)
-        status.TextColor3 = success and Color3.fromRGB(255, 200, 100) or Color3.fromRGB(255, 100, 100)
-    end
+SafeConnect(undoBtn, function()
+    local success, msg = Undo()
+    status.Text = success and ("↩️ " .. msg .. " (" .. #SpawnedData .. ")") or ("↩️ " .. msg)
+    status.TextColor3 = success and Color3.fromRGB(255, 200, 100) or Color3.fromRGB(255, 100, 100)
 end)
 
-redoBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local success, msg = Redo()
-        status.Text = success and ("↪️ " .. msg .. " (" .. #SpawnedData .. ")") or ("↪️ " .. msg)
-        status.TextColor3 = success and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(255, 100, 100)
-    end
+SafeConnect(redoBtn, function()
+    local success, msg = Redo()
+    status.Text = success and ("↪️ " .. msg .. " (" .. #SpawnedData .. ")") or ("↪️ " .. msg)
+    status.TextColor3 = success and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(255, 100, 100)
 end)
 
 -- Minimize
-minBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        panel.Visible = false
-        minIcon.Visible = true
-    end
+SafeConnect(minBtn, function()
+    panel.Visible = false
+    minIcon.Visible = true
 end)
 
-minIcon.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        minIcon.Visible = false
-        panel.Visible = true
-    end
+SafeConnect(minIcon, function()
+    minIcon.Visible = false
+    panel.Visible = true
 end)
 
 -- Close
-closeBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        if BrushSmoothPreview then BrushSmoothPreview:Destroy() end
-        for _, part in ipairs(BrushSmoothParts) do part:Destroy() end
-        if PreviewPart then PreviewPart:Destroy() end
-        gui:Destroy()
-    end
+SafeConnect(closeBtn, function()
+    if BrushSmoothPreview then BrushSmoothPreview:Destroy() end
+    for _, part in ipairs(BrushSmoothParts) do part:Destroy() end
+    if PreviewPart then PreviewPart:Destroy() end
+    gui:Destroy()
 end)
 
 -- Script Window
-scriptBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        codeText.Text = GenerateScript()
-        scriptWin.Visible = true
-    end
+SafeConnect(scriptBtn, function()
+    codeText.Text = GenerateScript()
+    scriptWin.Visible = true
 end)
 
-closeScriptBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        scriptWin.Visible = false
-    end
+SafeConnect(closeScriptBtn, function()
+    scriptWin.Visible = false
 end)
 
-copyBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local code = codeText.Text
-        if setclipboard then
-            setclipboard(code)
-            copyBtn.Text = "Copied!"
-            delay(1.5, function() copyBtn.Text = "Copy" end)
-        end
+SafeConnect(copyBtn, function()
+    local code = codeText.Text
+    if setclipboard then
+        setclipboard(code)
+        copyBtn.Text = "Copied!"
+        delay(1.5, function() copyBtn.Text = "Copy" end)
     end
 end)
 
 -- Clear
-clearBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        Terrain:Clear()
-        SpawnedData = {}
-        UndoHistory = {}
-        RedoHistory = {}
-        status.Text = "🗑️ All cleared!"
+SafeConnect(clearBtn, function()
+    Terrain:Clear()
+    SpawnedData = {}
+    UndoHistory = {}
+    RedoHistory = {}
+    status.Text = "🗑️ All cleared!"
+    status.TextColor3 = Color3.fromRGB(255, 100, 100)
+end)
+
+-- Spawn
+SafeConnect(spawnBtn, function()
+    if BrushSmoothEnabled then
+        status.Text = "❌ Disable Brush Smooth first!"
+        status.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    if PreviewPos then
+        TweenService:Create(spawnBtn, TweenInfo.new(0.1), {Size = IsMobile and UDim2.new(0, 65, 0, 65) or UDim2.new(0, 45, 0, 45)}):Play()
+        wait(0.1)
+        TweenService:Create(spawnBtn, TweenInfo.new(0.2), {Size = IsMobile and UDim2.new(0, 70, 0, 70) or UDim2.new(0, 50, 0, 50)}):Play()
+        
+        if SpawnTerrain() then
+            status.Text = "✅ Spawned! (" .. #SpawnedData .. " total)"
+            status.TextColor3 = Color3.fromRGB(0, 255, 100)
+        else
+            status.Text = "❌ Failed!"
+            status.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    else
+        status.Text = "❌ Aim at ground!"
         status.TextColor3 = Color3.fromRGB(255, 100, 100)
     end
 end)
 
--- Spawn
-spawnBtn.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        if BrushSmoothEnabled then
-            status.Text = "❌ Disable Brush Smooth first!"
-            status.TextColor3 = Color3.fromRGB(255, 100, 100)
-            return
-        end
-        
-        if PreviewPos then
-            TweenService:Create(spawnBtn, TweenInfo.new(0.1), {Size = IsMobile and UDim2.new(0, 65, 0, 65) or UDim2.new(0, 45, 0, 45)}):Play()
-            wait(0.1)
-            TweenService:Create(spawnBtn, TweenInfo.new(0.2), {Size = IsMobile and UDim2.new(0, 70, 0, 70) or UDim2.new(0, 50, 0, 50)}):Play()
-            
-            if SpawnTerrain() then
-                status.Text = "✅ Spawned! (" .. #SpawnedData .. " total)"
-                status.TextColor3 = Color3.fromRGB(0, 255, 100)
-            else
-                status.Text = "❌ Failed!"
-                status.TextColor3 = Color3.fromRGB(255, 100, 100)
-            end
-        else
-            status.Text = "❌ Aim at ground!"
-            status.TextColor3 = Color3.fromRGB(255, 100, 100)
+--// INPUT HANDLING FOR BRUSH (Mouse/Touch)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if BrushSmoothEnabled then
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            BrushActive = true
         end
     end
 end)
 
--- Drag Panel (Mouse & Touch)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        BrushActive = false
+        LastBrushPosition = nil
+    end
+end)
+
+-- Drag Panel
 local drag = false
 local startPos, startFrame
 
@@ -1696,15 +1700,17 @@ local function UpdateDrag(input)
     end
 end
 
-titleBar.InputBegan:Connect(StartDrag)
-titleBar.InputEnded:Connect(EndDrag)
+if titleBar then
+    titleBar.InputBegan:Connect(StartDrag)
+    titleBar.InputEnded:Connect(EndDrag)
+end
 UserInputService.InputChanged:Connect(UpdateDrag)
 
 -- Update Loop
 RunService.RenderStepped:Connect(UpdatePreview)
 
-print("✅ Terrain Editor v15.1 by shhhhnayy05 Loaded!")
+print("✅ Terrain Editor v15.4 by shhhhnayy05 Loaded!")
+print("🔧 Fixed: Power + button added")
+print("🔧 Fixed: Brush Smooth functionality with mouse hold")
 print("📱 Mobile Support: " .. (IsMobile and "Enabled" or "Disabled"))
-print("🖌️ Brush Smooth Mode: Added with ON/OFF toggle")
-print("📐 Panel Size: 280x400, Position: Right Bottom")
-print("💯 Executor Compatible")
+print("🖌️ Brush Smooth Mode: Hold mouse/touch to paint")
