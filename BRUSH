@@ -1,5 +1,5 @@
 --// TERRAIN BY shhhhnayy05 
---// Terrain Editor v15.5 - Fixed Brush Functionality & Layout
+--// Terrain Editor v15.6 - Fixed Brush Mode
 --// PASTE KE EXECUTOR
 
 local Players = game:GetService("Players")
@@ -208,59 +208,28 @@ local function UpdateBrushSmoothPreview(position, normal)
     end
 end
 
---// Apply Smooth Brush Effect - FIXED VERSION
+--// Apply Smooth Brush Effect - SIMPLIFIED & FIXED
 local function ApplyBrushSmooth(position, normal)
-    if BrushDebounce then return end
-    BrushDebounce = true
+    if not position then return end
     
-    local resolution = 4
+    -- Simple terrain modification using FillBall
     local success, err = pcall(function()
-        -- Loop through brush area
-        for x = -BrushSmoothRadius, BrushSmoothRadius, resolution do
-            for y = -BrushSmoothRadius, BrushSmoothRadius, resolution do
-                for z = -BrushSmoothRadius, BrushSmoothRadius, resolution do
-                    local offset = Vector3.new(x, y, z)
-                    local dist = offset.Magnitude
-                    
-                    if dist <= BrushSmoothRadius then
-                        local checkPos = position + offset
-                        
-                        -- Read terrain at this position
-                        local region = Region3.new(checkPos - Vector3.new(2, 2, 2), checkPos + Vector3.new(2, 2, 2))
-                        local matSuccess, material, occupancy = pcall(function()
-                            return Terrain:ReadVoxels(region, resolution)
-                        end)
-                        
-                        if matSuccess and material and occupancy then
-                            -- Safely get voxel data
-                            local currentMat = Enum.Material.Air
-                            local currentOcc = 0
-                            
-                            pcall(function()
-                                if material[1] and material[1][1] and material[1][1][1] then
-                                    currentMat = material[1][1][1]
-                                    currentOcc = occupancy[1][1][1]
-                                end
-                            end)
-                            
-                            -- Only modify if there's terrain (not air)
-                            if currentMat ~= Enum.Material.Air then
-                                -- Calculate intensity based on distance from center
-                                local intensity = 1 - (dist / BrushSmoothRadius)
-                                intensity = intensity * BrushSmoothIntensity
-                                
-                                -- Apply modification
-                                if intensity > 0.3 then
-                                    -- Fill with material to smooth
-                                    Terrain:FillBall(checkPos, resolution * 0.8, currentMat)
-                                elseif intensity > 0.1 then
-                                    -- Partial fill for smoothing
-                                    Terrain:FillBall(checkPos, resolution * 0.5, currentMat)
-                                end
-                            end
-                        end
-                    end
-                end
+        -- Create terrain at brush position with current material
+        local mat = CurrentMaterial.Mat
+        
+        -- Fill a ball at the brush position
+        local fillRadius = BrushSmoothRadius * 0.5
+        Terrain:FillBall(position, fillRadius, mat)
+        
+        -- Also fill around it for smoothing effect
+        for i = 1, 5 do
+            local offset = Vector3.new(
+                math.random(-fillRadius, fillRadius),
+                math.random(-fillRadius, fillRadius),
+                math.random(-fillRadius, fillRadius)
+            )
+            if offset.Magnitude <= fillRadius then
+                Terrain:FillBall(position + offset, fillRadius * 0.5, mat)
             end
         end
     end)
@@ -268,10 +237,6 @@ local function ApplyBrushSmooth(position, normal)
     if not success then
         warn("Brush Error: " .. tostring(err))
     end
-    
-    delay(0.05, function()
-        BrushDebounce = false
-    end)
 end
 
 --// Update Preview Loop
@@ -290,17 +255,7 @@ local function UpdatePreview()
             
             -- Apply brush effect if active (mouse held down)
             if BrushActive then
-                if LastBrushPosition then
-                    local dist = (result.Position - LastBrushPosition).Magnitude
-                    if dist > 1 then -- Minimum distance to apply
-                        ApplyBrushSmooth(result.Position, result.Normal)
-                        LastBrushPosition = result.Position
-                    end
-                else
-                    LastBrushPosition = result.Position
-                end
-            else
-                LastBrushPosition = result.Position
+                ApplyBrushSmooth(result.Position, result.Normal)
             end
         else
             -- Normal mode
@@ -320,7 +275,6 @@ local function UpdatePreview()
                 PreviewPart.Size = Vector3.new(SizeX, SizeY, SizeZ)
             end
             PreviewPart.Position = PreviewPos
-            LastBrushPosition = nil
         end
     else
         -- No raycast hit
@@ -331,7 +285,6 @@ local function UpdatePreview()
                 part.Transparency = 1
             end
         end
-        LastBrushPosition = nil
     end
 end
 
@@ -654,9 +607,9 @@ status.TextSize = 10
 status.Font = Enum.Font.Gotham
 status.Parent = scroll
 
---// BRUSH SMOOTH SECTION - FIXED LAYOUT (Taller to fit buttons)
+--// BRUSH SMOOTH SECTION
 local brushSec = Instance.new("Frame")
-brushSec.Size = UDim2.new(1, -8, 0, 120) -- Increased height for better layout
+brushSec.Size = UDim2.new(1, -8, 0, 120)
 brushSec.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
 brushSec.BorderSizePixel = 0
 brushSec.Parent = scroll
@@ -688,7 +641,7 @@ local brushToggleStroke = Instance.new("UIStroke", brushToggle)
 brushToggleStroke.Color = Color3.fromRGB(255, 255, 255)
 brushToggleStroke.Thickness = 2
 
---// Radius Controls (Left Side) - Repositioned
+--// Radius Controls
 local radiusLabel = Instance.new("TextLabel")
 radiusLabel.Size = UDim2.new(0, 40, 0, 20)
 radiusLabel.Position = UDim2.new(0, 5, 0, 62)
@@ -733,7 +686,7 @@ radiusPlus.Font = Enum.Font.GothamBold
 radiusPlus.Parent = brushSec
 Instance.new("UICorner", radiusPlus).CornerRadius = UDim.new(0, 4)
 
---// Power Controls (Right Side) - FIXED: Better positioning to fit within bounds
+--// Power Controls
 local powerLabel = Instance.new("TextLabel")
 powerLabel.Size = UDim2.new(0, 38, 0, 20)
 powerLabel.Position = UDim2.new(0, 145, 0, 62)
@@ -767,10 +720,9 @@ powerValue.Font = Enum.Font.GothamBold
 powerValue.Parent = brushSec
 Instance.new("UICorner", powerValue).CornerRadius = UDim.new(0, 4)
 
---// Power Plus - FIXED: Positioned within frame bounds (max width ~268)
 local powerPlus = Instance.new("TextButton")
 powerPlus.Size = UDim2.new(0, 26, 0, 22)
-powerPlus.Position = UDim2.new(0, 245, 0, 60) -- Adjusted to fit within 268 width
+powerPlus.Position = UDim2.new(0, 245, 0, 60)
 powerPlus.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
 powerPlus.Text = "+"
 powerPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1395,7 +1347,7 @@ SafeConnect(brushToggle, function()
     if BrushSmoothEnabled then
         brushToggle.Text = "ON"
         brushToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        status.Text = "🖌️ Brush ON: Hold click/tap to paint"
+        status.Text = "🖌️ Brush ON: Hold click to paint"
         status.TextColor3 = Color3.fromRGB(0, 255, 150)
         CreateBrushSmoothPreview()
         spawnBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
@@ -1663,7 +1615,6 @@ end)
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         BrushActive = false
-        LastBrushPosition = nil
     end
 end)
 
@@ -1699,7 +1650,6 @@ UserInputService.InputChanged:Connect(UpdateDrag)
 -- Update Loop
 RunService.RenderStepped:Connect(UpdatePreview)
 
-print("✅ Terrain Editor v15.5 by shhhhnayy05 Loaded!")
-print("🔧 Fixed: Brush functionality with proper terrain modification")
-print("🔧 Fixed: Power button layout within bounds")
-print("🖌️ Brush Mode: Hold click/tap and drag to paint terrain")
+print("✅ Terrain Editor v15.6 by shhhhnayy05 Loaded!")
+print("🖌️ Brush Mode: Hold click to paint terrain")
+print("🔧 Fixed: Simplified brush for better compatibility")
