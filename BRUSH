@@ -1,5 +1,5 @@
 --// TERRAIN BY shhhhnayy05 
---// Terrain Editor v15.4 - Fixed Power Button + Brush Functionality
+--// Terrain Editor v15.5 - Fixed Brush Functionality & Layout
 --// PASTE KE EXECUTOR
 
 local Players = game:GetService("Players")
@@ -110,7 +110,7 @@ local BrushSmoothRadius = 8
 local BrushSmoothIntensity = 0.5
 local LastBrushPosition = nil
 local BrushDebounce = false
-local BrushActive = false -- Track if mouse is held down
+local BrushActive = false
 
 --// Raycast
 local function GetRaycast()
@@ -146,14 +146,12 @@ end
 
 --// Create Brush Smooth Preview
 local function CreateBrushSmoothPreview()
-    -- Clear old preview
     if BrushSmoothPreview then BrushSmoothPreview:Destroy() end
     for _, part in ipairs(BrushSmoothParts) do
         part:Destroy()
     end
     BrushSmoothParts = {}
     
-    -- Create main cylinder preview
     BrushSmoothPreview = Instance.new("Part")
     BrushSmoothPreview.Shape = Enum.PartType.Cylinder
     BrushSmoothPreview.Material = Enum.Material.Neon
@@ -166,7 +164,6 @@ local function CreateBrushSmoothPreview()
     BrushSmoothPreview.CFrame = CFrame.new(0, 0, 0) * CFrame.Angles(0, 0, math.rad(90))
     BrushSmoothPreview.Parent = Workspace
     
-    -- Create particle effects around brush
     for i = 1, 8 do
         local part = Instance.new("Part")
         part.Shape = Enum.PartType.Ball
@@ -186,7 +183,6 @@ end
 local function UpdateBrushSmoothPreview(position, normal)
     if not BrushSmoothPreview or not position then return end
     
-    -- Calculate orientation based on surface normal
     local lookVector = normal
     local rightVector = Vector3.new(1, 0, 0)
     if math.abs(normal.X) > 0.9 then
@@ -195,11 +191,9 @@ local function UpdateBrushSmoothPreview(position, normal)
     local upVector = lookVector:Cross(rightVector).Unit
     rightVector = upVector:Cross(lookVector).Unit
     
-    -- Position and orient the cylinder
     BrushSmoothPreview.CFrame = CFrame.fromMatrix(position, rightVector, upVector)
     BrushSmoothPreview.Size = Vector3.new(0.3, BrushSmoothRadius * 2, BrushSmoothRadius * 2)
     
-    -- Animate particles
     for i, part in ipairs(BrushSmoothParts) do
         local angle = (i / 8) * math.pi * 2 + (tick() * 2)
         local offset = Vector3.new(
@@ -221,7 +215,7 @@ local function ApplyBrushSmooth(position, normal)
     
     local resolution = 4
     local success, err = pcall(function()
-        -- Create a region around the brush position
+        -- Loop through brush area
         for x = -BrushSmoothRadius, BrushSmoothRadius, resolution do
             for y = -BrushSmoothRadius, BrushSmoothRadius, resolution do
                 for z = -BrushSmoothRadius, BrushSmoothRadius, resolution do
@@ -230,46 +224,38 @@ local function ApplyBrushSmooth(position, normal)
                     
                     if dist <= BrushSmoothRadius then
                         local checkPos = position + offset
-                        local region = Region3.new(checkPos - Vector3.new(2, 2, 2), checkPos + Vector3.new(2, 2, 2))
                         
-                        -- Safely read voxels
+                        -- Read terrain at this position
+                        local region = Region3.new(checkPos - Vector3.new(2, 2, 2), checkPos + Vector3.new(2, 2, 2))
                         local matSuccess, material, occupancy = pcall(function()
                             return Terrain:ReadVoxels(region, resolution)
                         end)
                         
                         if matSuccess and material and occupancy then
-                            -- Check if there's terrain here (not air)
-                            local hasTerrain = false
+                            -- Safely get voxel data
                             local currentMat = Enum.Material.Air
                             local currentOcc = 0
                             
-                            -- Safely access the voxel data
-                            if typeof(material) == "table" and #material > 0 then
-                                if typeof(material[1]) == "table" and #material[1] > 0 then
-                                    if typeof(material[1][1]) == "table" and #material[1][1] > 0 then
-                                        currentMat = material[1][1][1]
-                                        currentOcc = occupancy[1][1][1]
-                                        if currentMat and currentMat ~= Enum.Material.Air then
-                                            hasTerrain = true
-                                        end
-                                    end
+                            pcall(function()
+                                if material[1] and material[1][1] and material[1][1][1] then
+                                    currentMat = material[1][1][1]
+                                    currentOcc = occupancy[1][1][1]
                                 end
-                            end
+                            end)
                             
-                            if hasTerrain then
-                                -- Calculate smooth factor based on distance from center
-                                local smoothFactor = 1 - (dist / BrushSmoothRadius)
-                                smoothFactor = smoothFactor * BrushSmoothIntensity
+                            -- Only modify if there's terrain (not air)
+                            if currentMat ~= Enum.Material.Air then
+                                -- Calculate intensity based on distance from center
+                                local intensity = 1 - (dist / BrushSmoothRadius)
+                                intensity = intensity * BrushSmoothIntensity
                                 
-                                -- Modify terrain based on intensity
-                                local targetOccupancy = math.max(0, currentOcc - smoothFactor * 0.3)
-                                
-                                if targetOccupancy > 0.1 then
-                                    -- Fill with current material
+                                -- Apply modification
+                                if intensity > 0.3 then
+                                    -- Fill with material to smooth
                                     Terrain:FillBall(checkPos, resolution * 0.8, currentMat)
-                                else
-                                    -- Carve/air
-                                    Terrain:FillBall(checkPos, resolution * 0.5, Enum.Material.Air)
+                                elseif intensity > 0.1 then
+                                    -- Partial fill for smoothing
+                                    Terrain:FillBall(checkPos, resolution * 0.5, currentMat)
                                 end
                             end
                         end
@@ -280,7 +266,7 @@ local function ApplyBrushSmooth(position, normal)
     end)
     
     if not success then
-        warn("Brush Smooth Error: " .. tostring(err))
+        warn("Brush Error: " .. tostring(err))
     end
     
     delay(0.05, function()
@@ -302,11 +288,11 @@ local function UpdatePreview()
             if not BrushSmoothPreview then CreateBrushSmoothPreview() end
             UpdateBrushSmoothPreview(result.Position, result.Normal)
             
-            -- Apply brush effect if mouse is held down
+            -- Apply brush effect if active (mouse held down)
             if BrushActive then
                 if LastBrushPosition then
                     local dist = (result.Position - LastBrushPosition).Magnitude
-                    if dist > BrushSmoothRadius * 0.2 then
+                    if dist > 1 then -- Minimum distance to apply
                         ApplyBrushSmooth(result.Position, result.Normal)
                         LastBrushPosition = result.Position
                     end
@@ -668,9 +654,9 @@ status.TextSize = 10
 status.Font = Enum.Font.Gotham
 status.Parent = scroll
 
---// BRUSH SMOOTH SECTION - FIXED LAYOUT
+--// BRUSH SMOOTH SECTION - FIXED LAYOUT (Taller to fit buttons)
 local brushSec = Instance.new("Frame")
-brushSec.Size = UDim2.new(1, -8, 0, 110) -- Increased height
+brushSec.Size = UDim2.new(1, -8, 0, 120) -- Increased height for better layout
 brushSec.BackgroundColor3 = Color3.fromRGB(45, 45, 60)
 brushSec.BorderSizePixel = 0
 brushSec.Parent = scroll
@@ -702,21 +688,21 @@ local brushToggleStroke = Instance.new("UIStroke", brushToggle)
 brushToggleStroke.Color = Color3.fromRGB(255, 255, 255)
 brushToggleStroke.Thickness = 2
 
---// Radius Controls (Left Side)
+--// Radius Controls (Left Side) - Repositioned
 local radiusLabel = Instance.new("TextLabel")
-radiusLabel.Size = UDim2.new(0, 45, 0, 20)
-radiusLabel.Position = UDim2.new(0, 5, 0, 60)
+radiusLabel.Size = UDim2.new(0, 40, 0, 20)
+radiusLabel.Position = UDim2.new(0, 5, 0, 62)
 radiusLabel.BackgroundTransparency = 1
 radiusLabel.Text = "Radius:"
 radiusLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
-radiusLabel.TextSize = 10
+radiusLabel.TextSize = 9
 radiusLabel.Font = Enum.Font.GothamBold
 radiusLabel.TextXAlignment = Enum.TextXAlignment.Left
 radiusLabel.Parent = brushSec
 
 local radiusMinus = Instance.new("TextButton")
-radiusMinus.Size = UDim2.new(0, 28, 0, 24)
-radiusMinus.Position = UDim2.new(0, 50, 0, 58)
+radiusMinus.Size = UDim2.new(0, 26, 0, 22)
+radiusMinus.Position = UDim2.new(0, 45, 0, 60)
 radiusMinus.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 radiusMinus.Text = "-"
 radiusMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -726,19 +712,19 @@ radiusMinus.Parent = brushSec
 Instance.new("UICorner", radiusMinus).CornerRadius = UDim.new(0, 4)
 
 local radiusValue = Instance.new("TextLabel")
-radiusValue.Size = UDim2.new(0, 35, 0, 24)
-radiusValue.Position = UDim2.new(0, 80, 0, 58)
+radiusValue.Size = UDim2.new(0, 30, 0, 22)
+radiusValue.Position = UDim2.new(0, 73, 0, 60)
 radiusValue.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
 radiusValue.Text = tostring(BrushSmoothRadius)
 radiusValue.TextColor3 = Color3.fromRGB(255, 255, 255)
-radiusValue.TextSize = 11
+radiusValue.TextSize = 10
 radiusValue.Font = Enum.Font.GothamBold
 radiusValue.Parent = brushSec
 Instance.new("UICorner", radiusValue).CornerRadius = UDim.new(0, 4)
 
 local radiusPlus = Instance.new("TextButton")
-radiusPlus.Size = UDim2.new(0, 28, 0, 24)
-radiusPlus.Position = UDim2.new(0, 117, 0, 58)
+radiusPlus.Size = UDim2.new(0, 26, 0, 22)
+radiusPlus.Position = UDim2.new(0, 105, 0, 60)
 radiusPlus.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
 radiusPlus.Text = "+"
 radiusPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -747,21 +733,21 @@ radiusPlus.Font = Enum.Font.GothamBold
 radiusPlus.Parent = brushSec
 Instance.new("UICorner", radiusPlus).CornerRadius = UDim.new(0, 4)
 
---// Power Controls (Right Side) - FIXED: Added missing + button
+--// Power Controls (Right Side) - FIXED: Better positioning to fit within bounds
 local powerLabel = Instance.new("TextLabel")
-powerLabel.Size = UDim2.new(0, 40, 0, 20)
-powerLabel.Position = UDim2.new(0, 155, 0, 60)
+powerLabel.Size = UDim2.new(0, 38, 0, 20)
+powerLabel.Position = UDim2.new(0, 145, 0, 62)
 powerLabel.BackgroundTransparency = 1
 powerLabel.Text = "Power:"
 powerLabel.TextColor3 = Color3.fromRGB(0, 255, 200)
-powerLabel.TextSize = 10
+powerLabel.TextSize = 9
 powerLabel.Font = Enum.Font.GothamBold
 powerLabel.TextXAlignment = Enum.TextXAlignment.Left
 powerLabel.Parent = brushSec
 
 local powerMinus = Instance.new("TextButton")
-powerMinus.Size = UDim2.new(0, 28, 0, 24)
-powerMinus.Position = UDim2.new(0, 195, 0, 58)
+powerMinus.Size = UDim2.new(0, 26, 0, 22)
+powerMinus.Position = UDim2.new(0, 183, 0, 60)
 powerMinus.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
 powerMinus.Text = "-"
 powerMinus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -771,8 +757,8 @@ powerMinus.Parent = brushSec
 Instance.new("UICorner", powerMinus).CornerRadius = UDim.new(0, 4)
 
 local powerValue = Instance.new("TextLabel")
-powerValue.Size = UDim2.new(0, 35, 0, 24)
-powerValue.Position = UDim2.new(0, 225, 0, 58)
+powerValue.Size = UDim2.new(0, 32, 0, 22)
+powerValue.Position = UDim2.new(0, 211, 0, 60)
 powerValue.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
 powerValue.Text = "50%"
 powerValue.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -781,10 +767,10 @@ powerValue.Font = Enum.Font.GothamBold
 powerValue.Parent = brushSec
 Instance.new("UICorner", powerValue).CornerRadius = UDim.new(0, 4)
 
---// FIXED: Added Power Plus button that was missing!
+--// Power Plus - FIXED: Positioned within frame bounds (max width ~268)
 local powerPlus = Instance.new("TextButton")
-powerPlus.Size = UDim2.new(0, 28, 0, 24)
-powerPlus.Position = UDim2.new(0, 262, 0, 58)
+powerPlus.Size = UDim2.new(0, 26, 0, 22)
+powerPlus.Position = UDim2.new(0, 245, 0, 60) -- Adjusted to fit within 268 width
 powerPlus.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
 powerPlus.Text = "+"
 powerPlus.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -1409,7 +1395,7 @@ SafeConnect(brushToggle, function()
     if BrushSmoothEnabled then
         brushToggle.Text = "ON"
         brushToggle.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        status.Text = "🖌️ Brush Smooth: ON (Hold click to paint)"
+        status.Text = "🖌️ Brush ON: Hold click/tap to paint"
         status.TextColor3 = Color3.fromRGB(0, 255, 150)
         CreateBrushSmoothPreview()
         spawnBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
@@ -1417,7 +1403,7 @@ SafeConnect(brushToggle, function()
     else
         brushToggle.Text = "OFF"
         brushToggle.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-        status.Text = "🖌️ Brush Smooth: OFF"
+        status.Text = "🖌️ Brush OFF: Tap 🎯 to spawn"
         status.TextColor3 = Color3.fromRGB(0, 200, 255)
         if BrushSmoothPreview then
             BrushSmoothPreview:Destroy()
@@ -1443,7 +1429,7 @@ SafeConnect(radiusPlus, function()
     if BrushSmoothEnabled then CreateBrushSmoothPreview() end
 end)
 
--- Power Control - FIXED: Now both buttons work
+-- Power Control
 SafeConnect(powerMinus, function()
     BrushSmoothIntensity = math.max(0.1, BrushSmoothIntensity - 0.1)
     powerValue.Text = math.floor(BrushSmoothIntensity * 100) .. "%"
@@ -1637,7 +1623,7 @@ end)
 -- Spawn
 SafeConnect(spawnBtn, function()
     if BrushSmoothEnabled then
-        status.Text = "❌ Disable Brush Smooth first!"
+        status.Text = "❌ Disable Brush first!"
         status.TextColor3 = Color3.fromRGB(255, 100, 100)
         return
     end
@@ -1666,6 +1652,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if BrushSmoothEnabled then
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             BrushActive = true
+            -- Apply immediately on first click
+            if PreviewPos then
+                ApplyBrushSmooth(PreviewPos, Vector3.new(0, 1, 0))
+            end
         end
     end
 end)
@@ -1709,8 +1699,7 @@ UserInputService.InputChanged:Connect(UpdateDrag)
 -- Update Loop
 RunService.RenderStepped:Connect(UpdatePreview)
 
-print("✅ Terrain Editor v15.4 by shhhhnayy05 Loaded!")
-print("🔧 Fixed: Power + button added")
-print("🔧 Fixed: Brush Smooth functionality with mouse hold")
-print("📱 Mobile Support: " .. (IsMobile and "Enabled" or "Disabled"))
-print("🖌️ Brush Smooth Mode: Hold mouse/touch to paint")
+print("✅ Terrain Editor v15.5 by shhhhnayy05 Loaded!")
+print("🔧 Fixed: Brush functionality with proper terrain modification")
+print("🔧 Fixed: Power button layout within bounds")
+print("🖌️ Brush Mode: Hold click/tap and drag to paint terrain")
