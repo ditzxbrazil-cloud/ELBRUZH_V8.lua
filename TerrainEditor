@@ -1,8 +1,7 @@
 --// TERRAIN BY ELBRUZH 
 --// Terrain Editor v16.3 - Smooth Terrain, Tembus Mode, Transparansi, & Writefile Export
---// FIXED & OPTIMIZED FOR MOBILE EXECUTORS (shhhhnayy05)
+--// FULL OPTIMIZED FOR MOBILE EXECUTORS (Memory & Touch Safe)
 
--- Mencegah Nil Service saat Game belum sepenuhnya dimuat
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -97,14 +96,17 @@ local Materials = {
 --// State
 local CurrentMaterial = Materials[1]
 local CurrentShape = "Ball"
-local CurrentToolMode = "Build" -- Build, Flatten, Paint
+local CurrentToolMode = "Build" 
 local SizeX, SizeY, SizeZ = 6, 6, 6
 local RotX, RotY, RotZ = 0, 0, 0
 local PreviewPos = nil
 local PreviewPart = nil
+
+-- Data Management (Optimized for Mobile RAM)
 local SpawnedData = {}
 local UndoHistory = {}
 local RedoHistory = {}
+local MAX_UNDO_STEPS = 25 -- Mencegah memory leak di HP kentang
 
 --// PREVIEW & RAYCAST SETTINGS
 local PreviewTransparency = 0.65
@@ -135,7 +137,10 @@ local function GetRaycast()
     if IgnoreTerrain then table.insert(filterList, Terrain) end
     params.FilterDescendantsInstances = filterList
     
-    return Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+    local success, result = pcall(function()
+        return Workspace:Raycast(ray.Origin, ray.Direction * 1000, params)
+    end)
+    return success and result or nil
 end
 
 --// Create Preview
@@ -212,7 +217,6 @@ local function UpdateGridVisual()
     end
 end
 
--- Optimasi thread asinkron untuk update Grid (menggunakan task.spawn)
 task.spawn(function() 
     while task.wait(2) do 
         if ShowGridVisual then UpdateGridVisual() end 
@@ -406,6 +410,11 @@ local function SpawnTerrain()
 
     local afterMats, afterOccs = Terrain:ReadVoxels(region, 4)
 
+    -- Mencegah memory leak di Mobile
+    if #UndoHistory >= MAX_UNDO_STEPS then
+        table.remove(UndoHistory, 1)
+    end
+
     table.insert(UndoHistory, {
         Region = region,
         BeforeMats = beforeMats,
@@ -549,7 +558,7 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "TerrainEditor"
 gui.ResetOnSpawn = false
 
--- Proteksi Parent GUI untuk Mobile Executor
+-- Safe Parenting Mobile
 local targetParent = LocalPlayer:WaitForChild("PlayerGui")
 pcall(function()
     if gethui then
@@ -635,7 +644,7 @@ local grassLeft, grassRight, grassDisplay = CreateColorSec(scroll, "🌿 Grass C
 local leafyLeft, leafyRight, leafyDisplay = CreateColorSec(scroll, "🍃 LeafyGrass Color", leafyGrassColors, Color3.fromRGB(100, 220, 80), currentLeafyGrassColorIndex)
 local groundLeft, groundRight, groundDisplay = CreateColorSec(scroll, "🟫 Ground Color", groundColors, Color3.fromRGB(200, 150, 100), currentGroundColorIndex)
 
---// TOOL MODE SECTION (DIPISAH DARI SHAPE)
+--// TOOL MODE SECTION 
 local toolSec = Instance.new("Frame", scroll)
 toolSec.Size, toolSec.BackgroundColor3, toolSec.BorderSizePixel = UDim2.new(1, -8, 0, 55), Color3.fromRGB(45, 45, 60), 0
 Instance.new("UICorner", toolSec).CornerRadius = UDim.new(0, 8)
@@ -671,7 +680,7 @@ ballBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
 local blockBtn = CreateShapeBtn("Block", 0.35)
 local wedgeBtn = CreateShapeBtn("Wedge", 0.68)
 
---// PREVIEW SETTINGS (TRANSPARANSI & TEMBUS)
+--// PREVIEW SETTINGS
 local prevSec = Instance.new("Frame", scroll)
 prevSec.Size, prevSec.BackgroundColor3, prevSec.BorderSizePixel = UDim2.new(1, -8, 0, 80), Color3.fromRGB(45, 45, 60), 0
 Instance.new("UICorner", prevSec).CornerRadius = UDim.new(0, 8)
@@ -693,7 +702,6 @@ Instance.new("UICorner", tPlus).CornerRadius = UDim.new(0, 4)
 local tembusBtn = Instance.new("TextButton", prevSec)
 tembusBtn.Size, tembusBtn.Position, tembusBtn.BackgroundColor3, tembusBtn.Text, tembusBtn.TextColor3, tembusBtn.TextSize, tembusBtn.Font = UDim2.new(0, 200, 0, 22), UDim2.new(0, 6, 0, 50), Color3.fromRGB(200, 60, 60), "Tembus Terrain / Water: OFF", Color3.fromRGB(255, 255, 255), 11, Enum.Font.GothamBold
 Instance.new("UICorner", tembusBtn).CornerRadius = UDim.new(0, 4)
-
 
 --// SMOOTH TERRAIN GUI SECTION
 local smoothSec = Instance.new("Frame", scroll)
@@ -767,7 +775,6 @@ end
 local axisXBtn = CreateAxisToggle(72, "X", SnapAxis.X)
 local axisYBtn = CreateAxisToggle(100, "Y", SnapAxis.Y)
 local axisZBtn = CreateAxisToggle(128, "Z", SnapAxis.Z)
-
 
 --// SIZE SECTION
 local sizeSec = Instance.new("Frame", scroll)
@@ -890,7 +897,6 @@ local copyBtn = Instance.new("TextButton", scriptTitle)
 copyBtn.Size, copyBtn.Position, copyBtn.BackgroundColor3, copyBtn.Text, copyBtn.TextColor3, copyBtn.TextSize, copyBtn.Font = UDim2.new(0, 50, 0, 30), UDim2.new(1, -120, 0.5, -15), Color3.fromRGB(0, 150, 100), "Copy", Color3.fromRGB(255, 255, 255), 12, Enum.Font.GothamBold
 Instance.new("UICorner", copyBtn).CornerRadius = UDim.new(0, 6)
 
--- TOMBOL SAVE FILE (Untuk bypass max cut-off di executor mobile)
 local saveBtn = Instance.new("TextButton", scriptTitle)
 saveBtn.Size, saveBtn.Position, saveBtn.BackgroundColor3, saveBtn.Text, saveBtn.TextColor3, saveBtn.TextSize, saveBtn.Font = UDim2.new(0, 80, 0, 30), UDim2.new(1, -210, 0.5, -15), Color3.fromRGB(150, 0, 255), "Save File", Color3.fromRGB(255, 255, 255), 12, Enum.Font.GothamBold
 Instance.new("UICorner", saveBtn).CornerRadius = UDim.new(0, 6)
@@ -906,8 +912,6 @@ local codeText = Instance.new("TextLabel", codeScroll)
 codeText.Size, codeText.Position, codeText.BackgroundTransparency, codeText.Text, codeText.TextColor3, codeText.TextSize, codeText.Font, codeText.TextXAlignment, codeText.TextYAlignment, codeText.AutomaticSize, codeText.TextWrapped = UDim2.new(1, -12, 0, 0), UDim2.new(0, 6, 0, 6), 1, "-- No terrain spawned yet --", Color3.fromRGB(200, 200, 200), 11, Enum.Font.Code, Enum.TextXAlignment.Left, Enum.TextYAlignment.Top, Enum.AutomaticSize.Y, true
 
 --// EVENT CONNECTIONS
-
--- Colors
 local function setupColorBtn(l, r, disp, arr, idxRef, cb)
     l.MouseButton1Click:Connect(function() idxRef.v = idxRef.v - 1 if idxRef.v < 1 then idxRef.v = #arr end disp.Text = arr[idxRef.v].name disp.BackgroundColor3 = arr[idxRef.v].color cb() end)
     r.MouseButton1Click:Connect(function() idxRef.v = idxRef.v + 1 if idxRef.v > #arr then idxRef.v = 1 end disp.Text = arr[idxRef.v].name disp.BackgroundColor3 = arr[idxRef.v].color cb() end)
@@ -916,7 +920,6 @@ setupColorBtn(grassLeft, grassRight, grassDisplay, grassColors, {v=currentGrassC
 setupColorBtn(leafyLeft, leafyRight, leafyDisplay, leafyGrassColors, {v=currentLeafyGrassColorIndex}, function() ApplyMaterialColors() end)
 setupColorBtn(groundLeft, groundRight, groundDisplay, groundColors, {v=currentGroundColorIndex}, function() ApplyMaterialColors() end)
 
--- Tool Mode & Shape Selection
 local function SelectToolMode(modeName, selectedBtn)
     CurrentToolMode = modeName
     buildBtn.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
@@ -941,109 +944,32 @@ ballBtn.MouseButton1Click:Connect(function() SelectShape("Ball", ballBtn) end)
 blockBtn.MouseButton1Click:Connect(function() SelectShape("Block", blockBtn) end)
 wedgeBtn.MouseButton1Click:Connect(function() SelectShape("Wedge", wedgeBtn) end)
 
--- Preview Transparansi & Tembus
-tMinus.MouseButton1Click:Connect(function()
-    PreviewTransparency = math.max(0, PreviewTransparency - 0.05)
-    tVal.Text = string.format("%.2f", PreviewTransparency)
-    if PreviewPart then PreviewPart.Transparency = PreviewTransparency end
-end)
-tPlus.MouseButton1Click:Connect(function()
-    PreviewTransparency = math.min(1, PreviewTransparency + 0.05)
-    tVal.Text = string.format("%.2f", PreviewTransparency)
-    if PreviewPart then PreviewPart.Transparency = PreviewTransparency end
-end)
-tembusBtn.MouseButton1Click:Connect(function()
-    IgnoreTerrain = not IgnoreTerrain
-    if IgnoreTerrain then
-        tembusBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-        tembusBtn.Text = "Tembus Terrain / Water: ON ☑️"
-    else
-        tembusBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-        tembusBtn.Text = "Tembus Terrain / Water: OFF"
-    end
-end)
+tMinus.MouseButton1Click:Connect(function() PreviewTransparency = math.max(0, PreviewTransparency - 0.05); tVal.Text = string.format("%.2f", PreviewTransparency); if PreviewPart then PreviewPart.Transparency = PreviewTransparency end end)
+tPlus.MouseButton1Click:Connect(function() PreviewTransparency = math.min(1, PreviewTransparency + 0.05); tVal.Text = string.format("%.2f", PreviewTransparency); if PreviewPart then PreviewPart.Transparency = PreviewTransparency end end)
+tembusBtn.MouseButton1Click:Connect(function() IgnoreTerrain = not IgnoreTerrain; tembusBtn.BackgroundColor3 = IgnoreTerrain and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(200, 60, 60); tembusBtn.Text = IgnoreTerrain and "Tembus Terrain / Water: ON ☑️" or "Tembus Terrain / Water: OFF" end)
 
--- Smooth Events
-smoothToggleBtn.MouseButton1Click:Connect(function()
-    SmoothEnabled = not SmoothEnabled
-    if SmoothEnabled then
-        smoothToggleBtn.Text = "ON ✨"
-        smoothToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-    else
-        smoothToggleBtn.Text = "OFF ▼"
-        smoothToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    end
-end)
-
-smoothModeBtn.MouseButton1Click:Connect(function()
-    CurrentSmoothModeIndex = CurrentSmoothModeIndex + 1
-    if CurrentSmoothModeIndex > #SmoothModes then CurrentSmoothModeIndex = 1 end
-    smoothModeBtn.Text = SmoothModes[CurrentSmoothModeIndex]
-end)
-
+smoothToggleBtn.MouseButton1Click:Connect(function() SmoothEnabled = not SmoothEnabled; smoothToggleBtn.Text = SmoothEnabled and "ON ✨" or "OFF ▼"; smoothToggleBtn.BackgroundColor3 = SmoothEnabled and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(200, 60, 60) end)
+smoothModeBtn.MouseButton1Click:Connect(function() CurrentSmoothModeIndex = CurrentSmoothModeIndex + 1; if CurrentSmoothModeIndex > #SmoothModes then CurrentSmoothModeIndex = 1 end; smoothModeBtn.Text = SmoothModes[CurrentSmoothModeIndex] end)
 intMinus.MouseButton1Click:Connect(function() SmoothIntensity = math.max(1, SmoothIntensity - 1); intDisp.Text = tostring(SmoothIntensity) end)
 intPlus.MouseButton1Click:Connect(function() SmoothIntensity = math.min(5, SmoothIntensity + 1); intDisp.Text = tostring(SmoothIntensity) end)
 
--- Snap Events
-snapToggleBtn.MouseButton1Click:Connect(function()
-    SnapEnabled = not SnapEnabled
-    if SnapEnabled then
-        snapToggleBtn.Text = "ON ☑️"
-        snapToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-    else
-        snapToggleBtn.Text = "OFF"
-        snapToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
-    end
-    UpdatePreview(); UpdateGridVisual()
-end)
-
-visualBtn.MouseButton1Click:Connect(function()
-    ShowGridVisual = not ShowGridVisual
-    if ShowGridVisual then
-        visualBtn.Text = "Visual Guide: ON"
-        visualBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 100)
-    else
-        visualBtn.Text = "Visual Guide: OFF"
-        visualBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 75)
-    end
-    UpdateGridVisual()
-end)
-
-local function SetGridSize(size, btn)
-    GridSize = size
-    sPreset5.BackgroundColor3 = Color3.fromRGB(80, 80, 100); sPreset10.BackgroundColor3 = Color3.fromRGB(80, 80, 100); sPreset20.BackgroundColor3 = Color3.fromRGB(80, 80, 100); sPreset50.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200)
-    UpdatePreview(); UpdateGridVisual()
-end
+snapToggleBtn.MouseButton1Click:Connect(function() SnapEnabled = not SnapEnabled; snapToggleBtn.Text = SnapEnabled and "ON ☑️" or "OFF"; snapToggleBtn.BackgroundColor3 = SnapEnabled and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(200, 60, 60); UpdatePreview(); UpdateGridVisual() end)
+visualBtn.MouseButton1Click:Connect(function() ShowGridVisual = not ShowGridVisual; visualBtn.Text = ShowGridVisual and "Visual Guide: ON" or "Visual Guide: OFF"; visualBtn.BackgroundColor3 = ShowGridVisual and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(60, 60, 75); UpdateGridVisual() end)
+local function SetGridSize(size, btn) GridSize = size; sPreset5.BackgroundColor3 = Color3.fromRGB(80, 80, 100); sPreset10.BackgroundColor3 = Color3.fromRGB(80, 80, 100); sPreset20.BackgroundColor3 = Color3.fromRGB(80, 80, 100); sPreset50.BackgroundColor3 = Color3.fromRGB(80, 80, 100); btn.BackgroundColor3 = Color3.fromRGB(0, 150, 200); UpdatePreview(); UpdateGridVisual() end
 sPreset5.MouseButton1Click:Connect(function() SetGridSize(5, sPreset5) end)
 sPreset10.MouseButton1Click:Connect(function() SetGridSize(10, sPreset10) end)
 sPreset20.MouseButton1Click:Connect(function() SetGridSize(20, sPreset20) end)
 sPreset50.MouseButton1Click:Connect(function() SetGridSize(50, sPreset50) end)
 
-local function ToggleAxis(axisKey, btn)
-    SnapAxis[axisKey] = not SnapAxis[axisKey]
-    if SnapAxis[axisKey] then btn.BackgroundColor3 = Color3.fromRGB(0, 150, 100) else btn.BackgroundColor3 = Color3.fromRGB(200, 60, 60) end
-    UpdatePreview()
-end
+local function ToggleAxis(axisKey, btn) SnapAxis[axisKey] = not SnapAxis[axisKey]; btn.BackgroundColor3 = SnapAxis[axisKey] and Color3.fromRGB(0, 150, 100) or Color3.fromRGB(200, 60, 60); UpdatePreview() end
 axisXBtn.MouseButton1Click:Connect(function() ToggleAxis("X", axisXBtn) end)
 axisYBtn.MouseButton1Click:Connect(function() ToggleAxis("Y", axisYBtn) end)
 axisZBtn.MouseButton1Click:Connect(function() ToggleAxis("Z", axisZBtn) end)
 
--- TEXTBOX CUSTOM SIZES
-local function handleSizeInput(box, type)
-    local val = tonumber(box.Text)
-    if val then
-        local clamped = math.clamp(math.floor(val), 1, 500)
-        if type == "X" then SizeX = clamped; box.Text = tostring(SizeX)
-        elseif type == "Y" then SizeY = clamped; box.Text = tostring(SizeY)
-        elseif type == "Z" then SizeZ = clamped; box.Text = tostring(SizeZ) end
-        UpdatePreview()
-    end
-end
+local function handleSizeInput(box, type) local val = tonumber(box.Text); if val then local clamped = math.clamp(math.floor(val), 1, 500); if type == "X" then SizeX = clamped; box.Text = tostring(SizeX) elseif type == "Y" then SizeY = clamped; box.Text = tostring(SizeY) elseif type == "Z" then SizeZ = clamped; box.Text = tostring(SizeZ) end; UpdatePreview() end end
 xValue.FocusLost:Connect(function() handleSizeInput(xValue, "X") end)
 yValue.FocusLost:Connect(function() handleSizeInput(yValue, "Y") end)
 zValue.FocusLost:Connect(function() handleSizeInput(zValue, "Z") end)
-
 xMinus.MouseButton1Click:Connect(function() SizeX = math.max(1, SizeX - 1); xValue.Text = tostring(SizeX); UpdatePreview() end)
 xPlus.MouseButton1Click:Connect(function() SizeX = math.min(500, SizeX + 1); xValue.Text = tostring(SizeX); UpdatePreview() end)
 yMinus.MouseButton1Click:Connect(function() SizeY = math.max(1, SizeY - 1); yValue.Text = tostring(SizeY); UpdatePreview() end)
@@ -1051,11 +977,7 @@ yPlus.MouseButton1Click:Connect(function() SizeY = math.min(500, SizeY + 1); yVa
 zMinus.MouseButton1Click:Connect(function() SizeZ = math.max(1, SizeZ - 1); zValue.Text = tostring(SizeZ); UpdatePreview() end)
 zPlus.MouseButton1Click:Connect(function() SizeZ = math.min(500, SizeZ + 1); zValue.Text = tostring(SizeZ); UpdatePreview() end)
 
-local function setPreset(size)
-    SizeX, SizeY, SizeZ = size, size, size
-    xValue.Text, yValue.Text, zValue.Text = tostring(SizeX), tostring(SizeY), tostring(SizeZ)
-    UpdatePreview()
-end
+local function setPreset(size) SizeX, SizeY, SizeZ = size, size, size; xValue.Text, yValue.Text, zValue.Text = tostring(SizeX), tostring(SizeY), tostring(SizeZ); UpdatePreview() end
 preset5.MouseButton1Click:Connect(function() setPreset(5) end)
 preset10.MouseButton1Click:Connect(function() setPreset(10) end)
 preset20.MouseButton1Click:Connect(function() setPreset(20) end)
@@ -1063,7 +985,6 @@ preset30.MouseButton1Click:Connect(function() setPreset(30) end)
 preset40.MouseButton1Click:Connect(function() setPreset(40) end)
 preset50.MouseButton1Click:Connect(function() setPreset(50) end)
 
--- Rotation
 rxMinus.MouseButton1Click:Connect(function() RotX = (RotX - 15) % 360; rxValue.Text = tostring(RotX) .. "°"; UpdatePreview() end)
 rxPlus.MouseButton1Click:Connect(function() RotX = (RotX + 15) % 360; rxValue.Text = tostring(RotX) .. "°"; UpdatePreview() end)
 ryMinus.MouseButton1Click:Connect(function() RotY = (RotY - 15) % 360; ryValue.Text = tostring(RotY) .. "°"; UpdatePreview() end)
@@ -1072,42 +993,48 @@ rzMinus.MouseButton1Click:Connect(function() RotZ = (RotZ - 15) % 360; rzValue.T
 rzPlus.MouseButton1Click:Connect(function() RotZ = (RotZ + 15) % 360; rzValue.Text = tostring(RotZ) .. "°"; UpdatePreview() end)
 rotResetBtn.MouseButton1Click:Connect(function() RotX, RotY, RotZ = 0, 0, 0; rxValue.Text, ryValue.Text, rzValue.Text = "0°", "0°", "0°"; UpdatePreview() end)
 
--- Undo/Redo
 undoBtn.MouseButton1Click:Connect(function() local success, msg = Undo(); status.Text = success and ("↩️ " .. msg .. " (" .. #SpawnedData .. ")") or ("↩️ " .. msg); status.TextColor3 = success and Color3.fromRGB(255, 200, 100) or Color3.fromRGB(255, 100, 100) end)
 redoBtn.MouseButton1Click:Connect(function() local success, msg = Redo(); status.Text = success and ("↪️ " .. msg .. " (" .. #SpawnedData .. ")") or ("↪️ " .. msg); status.TextColor3 = success and Color3.fromRGB(100, 200, 255) or Color3.fromRGB(255, 100, 100) end)
 
--- Window Controls
 minBtn.MouseButton1Click:Connect(function() panel.Visible = false; minIcon.Visible = true end)
 minIcon.MouseButton1Click:Connect(function() minIcon.Visible = false; panel.Visible = true end)
 closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
 
---// SCRIPT EXPORT LOGIC
 scriptBtn.MouseButton1Click:Connect(function() 
     local code = GenerateScript()
     scriptWin:SetAttribute("FullCode", code)
-    
     if string.len(code) > 15000 then
-        codeText.Text = string.sub(code, 1, 15000) .. "\n\n-- /// KODE TERLALU PANJANG UNTUK DITAMPILKAN (" .. #SpawnedData .. " Terrain) ///\n-- /// SILAKAN KLIK TOMBOL 'SAVE FILE' UNTUK MENYIMPANNYA (NO CUT OFF) ///"
+        codeText.Text = string.sub(code, 1, 15000) .. "\n\n-- /// KODE TERLALU PANJANG UNTUK DITAMPILKAN (" .. #SpawnedData .. " Terrain) ///\n-- /// SILAKAN KLIK TOMBOL 'SAVE FILE' UNTUK MENYIMPANNYA ///"
     else
         codeText.Text = code
     end
     scriptWin.Visible = true 
 end)
 closeScriptBtn.MouseButton1Click:Connect(function() scriptWin.Visible = false end)
-copyBtn.MouseButton1Click:Connect(function() if setclipboard then setclipboard(scriptWin:GetAttribute("FullCode") or codeText.Text); copyBtn.Text = "Copied!"; task.delay(1.5, function() copyBtn.Text = "Copy" end) end end)
 
-saveBtn.MouseButton1Click:Connect(function()
-    local code = scriptWin:GetAttribute("FullCode") or codeText.Text
-    if writefile then
-        local filename = "ELBRUZH_Terrain_"..os.time()..".lua"
-        writefile(filename, code)
-        saveBtn.Text = "Saved in Workspace!"
-    else
-        saveBtn.Text = "Executor Ga Support"
-    end
-    task.delay(2, function() saveBtn.Text = "Save File" end)
+copyBtn.MouseButton1Click:Connect(function() 
+    pcall(function()
+        if setclipboard then 
+            setclipboard(scriptWin:GetAttribute("FullCode") or codeText.Text)
+            copyBtn.Text = "Copied!"
+            task.delay(1.5, function() copyBtn.Text = "Copy" end) 
+        end
+    end)
 end)
 
+saveBtn.MouseButton1Click:Connect(function()
+    pcall(function()
+        local code = scriptWin:GetAttribute("FullCode") or codeText.Text
+        if writefile then
+            local filename = "ELBRUZH_Terrain_"..os.time()..".lua"
+            writefile(filename, code)
+            saveBtn.Text = "Saved!"
+        else
+            saveBtn.Text = "Not Supported"
+        end
+        task.delay(2, function() saveBtn.Text = "Save File" end)
+    end)
+end)
 
 clearBtn.MouseButton1Click:Connect(function()
     while #UndoHistory > 0 do Undo() end
@@ -1121,7 +1048,6 @@ spawnBtn.MouseButton1Click:Connect(function()
         TweenService:Create(spawnBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 45, 0, 45)}):Play()
         task.wait(0.1)
         TweenService:Create(spawnBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
-        
         if SpawnTerrain() then
             status.Text = "✅ Spawned! (" .. #SpawnedData .. " total)"
             status.TextColor3 = Color3.fromRGB(0, 255, 100)
@@ -1135,25 +1061,34 @@ spawnBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Drag Panel
+-- Window Dragging (Safe for Mobile Touch)
 local drag = false
 local startPos, startFrame
+
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        drag = true; startPos = input.Position; startFrame = panel.Position
+        drag = true
+        startPos = input.Position
+        startFrame = panel.Position
     end
 end)
-titleBar.InputEnded:Connect(function() drag = false end)
+
+titleBar.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        drag = false
+    end
+end)
+
 UserInputService.InputChanged:Connect(function(input)
     if drag and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - startPos
-        panel.Position = UDim2.new(startFrame.X.Scale, startFrame.X.Offset + delta.X, startFrame.Y.Scale, startFrame.Y.Offset + delta.Y)
+        panel.Position = UDim2.new(
+            startFrame.X.Scale, startFrame.X.Offset + delta.X, 
+            startFrame.Y.Scale, startFrame.Y.Offset + delta.Y
+        )
     end
 end)
 
 RunService.RenderStepped:Connect(UpdatePreview)
 
-print("✅ Terrain Editor v16.3 Loaded!")
-print("🛠️ Fixed: Tool Mode terpisah dari Base Shape (Ball Flatten/Paint Supported)")
-print("✨ Added: Tembus Water/Terrain (Raycast Ignore) & Preview Transparency")
-print("📁 Added: Save File / Writefile untuk script raksasa (>5000 terrain) agar tidak cut-off.")
+print("✅ Terrain Editor v16.3 Loaded Successfully!")
