@@ -2,6 +2,11 @@
 --// Terrain Editor v16.3 - Smooth Terrain, Tembus Mode, Transparansi, & Writefile Export
 --// FIXED & OPTIMIZED FOR MOBILE EXECUTORS (shhhhnayy05)
 
+-- Mencegah Nil Service saat Game belum sepenuhnya dimuat
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -207,7 +212,12 @@ local function UpdateGridVisual()
     end
 end
 
-spawn(function() while wait(2) do if ShowGridVisual then UpdateGridVisual() end end end)
+-- Optimasi thread asinkron untuk update Grid (menggunakan task.spawn)
+task.spawn(function() 
+    while task.wait(2) do 
+        if ShowGridVisual then UpdateGridVisual() end 
+    end 
+end)
 
 --// Update Preview
 local function UpdatePreview()
@@ -350,7 +360,6 @@ local function BL(d)
     elseif toolMode == "Flatten" then
         local baseCf = CFrame.new(pos) * CFrame.Angles(0, math.rad(ry), 0)
         if shape == "Ball" then
-            -- Menerapkan Ball tetapi membuat atasnya rata
             Terrain:FillBall(pos - Vector3.new(0, sy/4, 0), math.max(sx, sz)/2, mat)
             Terrain:FillBlock(baseCf * CFrame.new(0, sy/2, 0), Vector3.new(sx, sy, sz), Enum.Material.Air)
         else
@@ -539,7 +548,17 @@ end
 local gui = Instance.new("ScreenGui")
 gui.Name = "TerrainEditor"
 gui.ResetOnSpawn = false
-gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Proteksi Parent GUI untuk Mobile Executor
+local targetParent = LocalPlayer:WaitForChild("PlayerGui")
+pcall(function()
+    if gethui then
+        targetParent = gethui()
+    elseif game:GetService("CoreGui") then
+        targetParent = game:GetService("CoreGui")
+    end
+end)
+gui.Parent = targetParent
 
 local ch = Instance.new("Frame", gui)
 ch.Size, ch.Position, ch.BackgroundTransparency = UDim2.new(0, 20, 0, 20), UDim2.new(0.5, -10, 0.5, -10), 1
@@ -1075,7 +1094,7 @@ scriptBtn.MouseButton1Click:Connect(function()
     scriptWin.Visible = true 
 end)
 closeScriptBtn.MouseButton1Click:Connect(function() scriptWin.Visible = false end)
-copyBtn.MouseButton1Click:Connect(function() if setclipboard then setclipboard(scriptWin:GetAttribute("FullCode") or codeText.Text); copyBtn.Text = "Copied!"; delay(1.5, function() copyBtn.Text = "Copy" end) end end)
+copyBtn.MouseButton1Click:Connect(function() if setclipboard then setclipboard(scriptWin:GetAttribute("FullCode") or codeText.Text); copyBtn.Text = "Copied!"; task.delay(1.5, function() copyBtn.Text = "Copy" end) end end)
 
 saveBtn.MouseButton1Click:Connect(function()
     local code = scriptWin:GetAttribute("FullCode") or codeText.Text
@@ -1086,7 +1105,7 @@ saveBtn.MouseButton1Click:Connect(function()
     else
         saveBtn.Text = "Executor Ga Support"
     end
-    delay(2, function() saveBtn.Text = "Save File" end)
+    task.delay(2, function() saveBtn.Text = "Save File" end)
 end)
 
 
@@ -1100,7 +1119,7 @@ end)
 spawnBtn.MouseButton1Click:Connect(function()
     if PreviewPos then
         TweenService:Create(spawnBtn, TweenInfo.new(0.1), {Size = UDim2.new(0, 45, 0, 45)}):Play()
-        wait(0.1)
+        task.wait(0.1)
         TweenService:Create(spawnBtn, TweenInfo.new(0.2), {Size = UDim2.new(0, 50, 0, 50)}):Play()
         
         if SpawnTerrain() then
